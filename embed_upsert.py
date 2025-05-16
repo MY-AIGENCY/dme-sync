@@ -39,7 +39,10 @@ client = openai.OpenAI(api_key=OPENAI_API_KEY)
 # Initialize Pinecone
 if not PINECONE_API_KEY:
     raise ValueError("PINECONE_API_KEY environment variable is required")
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+
+# Use the new Pinecone initialization
+pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+print(f"Pinecone client initialized successfully with environment: {PINECONE_ENVIRONMENT}")
 
 # Initialize Typesense only if API key is available
 typesense_client = None
@@ -109,20 +112,32 @@ def create_typesense_collection():
 
 def ensure_pinecone_index():
     """Ensure Pinecone index exists"""
+    # List all indexes
+    index_list = pc.list_indexes()
+    print(f"Available Pinecone indexes: {index_list}")
+    
     # Check if index exists
-    if PINECONE_INDEX_NAME not in pinecone.list_indexes():
+    if PINECONE_INDEX_NAME not in index_list.names():
         # Create index
-        pinecone.create_index(
-            name=PINECONE_INDEX_NAME,
-            dimension=EMBEDDING_DIMENSION,
-            metric="cosine"
-        )
-        print(f"Created Pinecone index: {PINECONE_INDEX_NAME}")
+        try:
+            pc.create_index(
+                name=PINECONE_INDEX_NAME,
+                dimension=EMBEDDING_DIMENSION,
+                metric="cosine",
+                spec=pinecone.ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'
+                )
+            )
+            print(f"Created Pinecone index: {PINECONE_INDEX_NAME}")
+        except Exception as e:
+            print(f"Error creating Pinecone index: {e}")
+            print(f"Attempting to use existing index if available.")
     else:
         print(f"Pinecone index already exists: {PINECONE_INDEX_NAME}")
     
     # Connect to index
-    return pinecone.Index(PINECONE_INDEX_NAME)
+    return pc.Index(PINECONE_INDEX_NAME)
 
 def get_embedding(text, model=EMBEDDING_MODEL):
     """Get embedding for text using OpenAI API"""
@@ -245,7 +260,7 @@ def test_search(query, limit=5):
     query_embedding = get_embedding(query)
     
     # Search Pinecone
-    pinecone_index = pinecone.Index(PINECONE_INDEX_NAME)
+    pinecone_index = pc.Index(PINECONE_INDEX_NAME)
     pinecone_results = pinecone_index.query(
         vector=query_embedding,
         top_k=limit,
