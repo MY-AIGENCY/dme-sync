@@ -36,13 +36,25 @@ logging.info("======================================")
 # Load environment variables
 load_dotenv()
 
+# For Render deployment, also try to load from .env
+try:
+    if os.path.exists('.env'):
+        logging.info("Found .env file, loading variables")
+        with open('.env', 'r') as f:
+            for line in f:
+                if line.strip() and not line.startswith('#'):
+                    key, value = line.strip().split('=', 1)
+                    os.environ[key] = value
+except Exception as e:
+    logging.warning(f"Error loading .env file: {e}")
+
 # Check if we're in development mode
 DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 
 # API keys and configuration
-# Try both formats that Render might use
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY") or os.getenv("PINECONE_API_KEY")
+# Try multiple formats that Render might use
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY") or os.getenv("PINECONE_API_KEY") or ""
 PINECONE_ENVIRONMENT = os.environ.get("PINECONE_ENVIRONMENT") or os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME") or os.getenv("PINECONE_INDEX_NAME", "dme-kb")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
@@ -97,11 +109,21 @@ if not PINECONE_API_KEY:
     logging.warning("PINECONE_API_KEY environment variable is missing. Search and ingestion will be disabled.")
 else:
     try:
-        pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
-        pinecone_index = pinecone.Index(PINECONE_INDEX_NAME)
+        # New Pinecone initialization approach
+        pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+        pinecone_index = pc.Index(PINECONE_INDEX_NAME)
         logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
     except Exception as e:
         logging.error(f"Error connecting to Pinecone: {e}")
+        logging.info("Trying alternative Pinecone initialization...")
+        try:
+            # Fallback to older API if needed
+            import pinecone
+            pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+            pinecone_index = pinecone.Index(PINECONE_INDEX_NAME)
+            logging.info(f"Successfully connected to Pinecone index (fallback): {PINECONE_INDEX_NAME}")
+        except Exception as e2:
+            logging.error(f"Error with fallback Pinecone connection: {e2}")
 
 # Define data models
 class SearchQuery(BaseModel):
