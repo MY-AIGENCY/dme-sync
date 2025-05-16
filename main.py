@@ -119,16 +119,30 @@ else:
         if PINECONE_INDEX_NAME not in index_list.names():
             logging.info(f"Index {PINECONE_INDEX_NAME} does not exist. Creating it now...")
             try:
-                # Create the index
-                pc.create_index(
-                    name=PINECONE_INDEX_NAME,
-                    dimension=1536,  # For OpenAI's text-embedding-3-small
-                    metric='cosine',
-                    spec=pinecone.ServerlessSpec(
-                        cloud='aws',
-                        region='us-west-2'
+                # Create the index - use gcp-starter for free plan
+                try:
+                    pc.create_index(
+                        name=PINECONE_INDEX_NAME,
+                        dimension=1536,  # For OpenAI's text-embedding-3-small
+                        metric='cosine',
+                        spec=pinecone.ServerlessSpec(
+                            cloud='gcp',
+                            region='us-central1'
+                        )
                     )
-                )
+                except Exception as spec_error:
+                    logging.warning(f"Error with ServerlessSpec: {spec_error}")
+                    logging.info("Trying PodSpec instead...")
+                    # Fallback to PodSpec for other account types
+                    pc.create_index(
+                        name=PINECONE_INDEX_NAME,
+                        dimension=1536,
+                        metric='cosine',
+                        spec=pinecone.PodSpec(
+                            environment='gcp-starter'
+                        )
+                    )
+                
                 logging.info(f"Successfully created Pinecone index: {PINECONE_INDEX_NAME}")
             except Exception as e:
                 logging.error(f"Error creating Pinecone index: {e}")
