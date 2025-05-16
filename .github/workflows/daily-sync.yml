@@ -9,9 +9,13 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # This is needed for push access
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          token: ${{ github.token }}
         
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -32,4 +36,4 @@ jobs:
           git config --local user.name "GitHub Action"
           git add dme.db
           git diff --quiet && git diff --staged --quiet || git commit -m "Update database - $(date +'%Y-%m-%d')"
-          git push 
+          git push origin HEAD:main 
