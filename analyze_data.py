@@ -67,6 +67,24 @@ def analyze_categories():
     print("\nTo map category IDs to names:")
     print("curl -s \"https://dmeacademy.com/wp-json/wp/v2/categories?per_page=20\" | jq '.[] | {id, name}'")
 
+def analyze_recent_posts():
+    """Analyze most recent posts"""
+    c.execute("""
+        SELECT json_extract(raw, '$.date'), 
+               json_extract(raw, '$.title.rendered'), 
+               json_extract(raw, '$.link')
+        FROM items 
+        WHERE type='posts' 
+        ORDER BY json_extract(raw, '$.date') DESC 
+        LIMIT 10
+    """)
+    recent_posts = c.fetchall()
+    
+    print("\n=== Most Recent Posts ===")
+    for date, title, link in recent_posts:
+        print(f"{date}: {title}")
+        print(f"  {link}")
+
 def word_frequency():
     """Analyze word frequency in post titles"""
     c.execute("SELECT json_extract(raw, '$.title.rendered') FROM items WHERE type='posts'")
@@ -108,6 +126,18 @@ def print_summary():
     
     if date_range[0] and date_range[1]:
         print(f"Date range: {date_range[0]} to {date_range[1]}")
+    
+    print("\n=== Content Coverage ===")
+    print("INCLUDED content types:")
+    print("- Posts (wp/v2/posts): Blog posts and news articles")
+    print("- Pages (wp/v2/pages): Static website pages")
+    print("\nEXCLUDED content types:")
+    print("- Events (tribe/events/v1/events): Calendar events (requires special handling)")
+    print("- Media: Images, videos, documents")
+    print("- Custom post types: Sport-specific content, specialized sections")
+    print("- Users/Authors: Profile information")
+    print("- Comments: User interactions")
+    print("- Taxonomies: Tags, categories metadata")
 
 if __name__ == "__main__":
     print("DME Database Analysis")
@@ -116,6 +146,7 @@ if __name__ == "__main__":
     print_summary()
     analyze_posts_by_year()
     analyze_categories()
+    analyze_recent_posts()
     word_frequency()
     
     print("\nAnalysis complete!")
