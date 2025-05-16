@@ -22,6 +22,17 @@ logging.basicConfig(
     ]
 )
 
+# Debug: Print all environment variables (sanitized)
+logging.info("=== Environment Variables (sanitized) ===")
+for key in sorted(os.environ.keys()):
+    value = os.environ[key]
+    # Don't log the actual API keys, just their presence
+    if 'key' in key.lower() or 'secret' in key.lower() or 'token' in key.lower() or 'password' in key.lower():
+        logging.info(f"{key}: {'*' * min(8, len(value))}")
+    else:
+        logging.info(f"{key}: {value}")
+logging.info("======================================")
+
 # Load environment variables
 load_dotenv()
 
@@ -29,12 +40,25 @@ load_dotenv()
 DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 
 # API keys and configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
-PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-TOP_K = int(os.getenv("TOP_K", "5"))
+# Try both formats that Render might use
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY") or os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.environ.get("PINECONE_ENVIRONMENT") or os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
+PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME") or os.getenv("PINECONE_INDEX_NAME", "dme-kb")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+TOP_K = int(os.environ.get("TOP_K") or os.getenv("TOP_K", "5"))
+
+# Debug: Print available key info
+logging.info("=== API Key Debug ===")
+logging.info(f"OPENAI_API_KEY present: {OPENAI_API_KEY is not None}")
+if OPENAI_API_KEY:
+    logging.info(f"OPENAI_API_KEY length: {len(OPENAI_API_KEY)}")
+logging.info(f"PINECONE_API_KEY present: {PINECONE_API_KEY is not None}")
+if PINECONE_API_KEY:
+    logging.info(f"PINECONE_API_KEY length: {len(PINECONE_API_KEY)}")
+logging.info(f"PINECONE_ENVIRONMENT: {PINECONE_ENVIRONMENT}")
+logging.info(f"PINECONE_INDEX_NAME: {PINECONE_INDEX_NAME}")
+logging.info("====================")
 
 # Create FastAPI app
 app = FastAPI(
@@ -250,6 +274,7 @@ async def health_check():
     }
 
 @app.get("/")
+@app.head("/")  # Add support for HEAD requests
 async def root():
     """Root endpoint with API information"""
     return {
