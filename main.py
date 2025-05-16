@@ -25,6 +25,9 @@ logging.basicConfig(
 # Load environment variables
 load_dotenv()
 
+# Check if we're in development mode
+DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
+
 # API keys and configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -32,28 +35,6 @@ PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 TOP_K = int(os.getenv("TOP_K", "5"))
-
-# Check for required API keys
-if not OPENAI_API_KEY:
-    logging.error("OPENAI_API_KEY environment variable is required")
-    raise ValueError("OPENAI_API_KEY environment variable is required")
-
-if not PINECONE_API_KEY:
-    logging.error("PINECONE_API_KEY environment variable is required")
-    raise ValueError("PINECONE_API_KEY environment variable is required")
-
-# Initialize OpenAI client
-openai.api_key = OPENAI_API_KEY
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-# Initialize Pinecone
-try:
-    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
-    index = pinecone.Index(PINECONE_INDEX_NAME)
-    logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
-except Exception as e:
-    logging.error(f"Error connecting to Pinecone: {e}")
-    raise ValueError(f"Failed to connect to Pinecone: {e}")
 
 # Create FastAPI app
 app = FastAPI(
@@ -71,6 +52,34 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+# Check for API keys and initialize clients
+missing_keys = []
+openai_client = None
+pinecone_index = None
+
+if not OPENAI_API_KEY:
+    missing_keys.append("OPENAI_API_KEY")
+    logging.warning("OPENAI_API_KEY environment variable is missing. Search and ingestion will be disabled.")
+else:
+    try:
+        openai.api_key = OPENAI_API_KEY
+        openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        logging.info("OpenAI client initialized successfully")
+    except Exception as e:
+        logging.error(f"Failed to initialize OpenAI client: {e}")
+
+if not PINECONE_API_KEY:
+    missing_keys.append("PINECONE_API_KEY")
+    logging.warning("PINECONE_API_KEY environment variable is missing. Search and ingestion will be disabled.")
+else:
+    try:
+        pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+        pinecone_index = pinecone.Index(PINECONE_INDEX_NAME)
+        logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
+    except Exception as e:
+        logging.error(f"Error connecting to Pinecone: {e}")
+
+# Define data models
 class SearchQuery(BaseModel):
     query: str = Field(..., description="The search query")
     top_k: int = Field(5, description="Number of results to return")
@@ -93,6 +102,9 @@ class SearchResponse(BaseModel):
 
 def get_embedding(text, model=EMBEDDING_MODEL):
     """Get embedding for text using OpenAI API"""
+    if not openai_client:
+        raise HTTPException(status_code=503, detail="OpenAI client not initialized. Check environment variables.")
+    
     start_time = time.time()
     logging.info(f"Getting embedding for text of length {len(text)}")
     
@@ -101,7 +113,7 @@ def get_embedding(text, model=EMBEDDING_MODEL):
         text = text[:25000]
     
     try:
-        response = client.embeddings.create(
+        response = openai_client.embeddings.create(
             input=text,
             model=model
         )
@@ -117,6 +129,9 @@ def get_embedding(text, model=EMBEDDING_MODEL):
 
 def ingest_to_pinecone(item: IngestItem):
     """Ingest an item into Pinecone"""
+    if not pinecone_index:
+        raise HTTPException(status_code=503, detail="Pinecone client not initialized. Check environment variables.")
+    
     logging.info(f"Ingesting item: {item.title}")
     
     # Generate a stable ID
@@ -141,7 +156,7 @@ def ingest_to_pinecone(item: IngestItem):
     
     # Upsert to Pinecone
     try:
-        index.upsert(
+        pinecone_index.upsert(
             vectors=[{
                 "id": item_id,
                 "values": embedding,
@@ -157,6 +172,10 @@ def ingest_to_pinecone(item: IngestItem):
 @app.post("/ingest", response_model=Dict[str, str])
 async def ingest(item: IngestItem, background_tasks: BackgroundTasks):
     """Ingest an item into the knowledge base"""
+    if not openai_client or not pinecone_index:
+        raise HTTPException(status_code=503, 
+                           detail="API not fully functional. Missing required API keys: " + ", ".join(missing_keys))
+    
     background_tasks.add_task(ingest_to_pinecone, item)
     return {"status": "ingestion started"}
 
@@ -167,6 +186,10 @@ async def search(
     filter_type: Optional[str] = Query(None, description="Filter by content type"),
 ):
     """Search the knowledge base"""
+    if not openai_client or not pinecone_index:
+        raise HTTPException(status_code=503, 
+                           detail="API not fully functional. Missing required API keys: " + ", ".join(missing_keys))
+    
     start_time = time.time()
     logging.info(f"Search query: {q}")
     
@@ -180,7 +203,7 @@ async def search(
     
     # Search Pinecone
     try:
-        search_results = index.query(
+        search_results = pinecone_index.query(
             vector=query_embedding,
             top_k=top_k,
             include_metadata=True,
@@ -211,16 +234,37 @@ async def search(
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    status = "healthy"
+    if missing_keys:
+        status = "degraded"
+    
     return {
-        "status": "healthy",
+        "status": status,
         "timestamp": datetime.now().isoformat(),
         "service": "DME KB API",
         "connections": {
-            "pinecone": "connected",
-            "openai": "connected" if OPENAI_API_KEY else "not configured"
-        }
+            "pinecone": "connected" if pinecone_index else "not configured",
+            "openai": "connected" if openai_client else "not configured"
+        },
+        "missing_env_vars": missing_keys if missing_keys else []
+    }
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "api": "DME Knowledge Base API",
+        "version": "1.0.0",
+        "status": "degraded" if missing_keys else "healthy",
+        "documentation": "/docs",
+        "health": "/health"
     }
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Print warning if keys are missing
+    if missing_keys:
+        logging.warning(f"Running with limited functionality. Missing environment variables: {', '.join(missing_keys)}")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000) 
