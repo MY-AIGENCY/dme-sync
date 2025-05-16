@@ -111,19 +111,36 @@ else:
     try:
         # New Pinecone initialization approach
         pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+        
+        # Check if index exists
+        index_list = pc.list_indexes()
+        logging.info(f"Available Pinecone indexes: {index_list}")
+        
+        if PINECONE_INDEX_NAME not in index_list.names():
+            logging.info(f"Index {PINECONE_INDEX_NAME} does not exist. Creating it now...")
+            try:
+                # Create the index
+                pc.create_index(
+                    name=PINECONE_INDEX_NAME,
+                    dimension=1536,  # For OpenAI's text-embedding-3-small
+                    metric='cosine',
+                    spec=pinecone.ServerlessSpec(
+                        cloud='aws',
+                        region='us-west-2'
+                    )
+                )
+                logging.info(f"Successfully created Pinecone index: {PINECONE_INDEX_NAME}")
+            except Exception as e:
+                logging.error(f"Error creating Pinecone index: {e}")
+                logging.warning("Using a different index name as fallback")
+                PINECONE_INDEX_NAME = "default-kb"
+        
+        # Connect to the index
         pinecone_index = pc.Index(PINECONE_INDEX_NAME)
         logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
     except Exception as e:
         logging.error(f"Error connecting to Pinecone: {e}")
-        logging.info("Trying alternative Pinecone initialization...")
-        try:
-            # Fallback to older API if needed
-            import pinecone
-            pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
-            pinecone_index = pinecone.Index(PINECONE_INDEX_NAME)
-            logging.info(f"Successfully connected to Pinecone index (fallback): {PINECONE_INDEX_NAME}")
-        except Exception as e2:
-            logging.error(f"Error with fallback Pinecone connection: {e2}")
+        logging.info("Pinecone connection failed. Search and ingestion will be disabled.")
 
 # Define data models
 class SearchQuery(BaseModel):
