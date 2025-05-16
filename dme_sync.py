@@ -96,12 +96,82 @@ def sync_one(kind, route):
         # Ensure we commit any changes so far
         DB.commit()
 
+def sync_events():
+    """Sync events which have a different structure"""
+    kind = "events"
+    route = "tribe/events/v1/events"
+    page = 1
+    seen = set()
+    
+    try:
+        while True:
+            data = grab(f"{BASE}/{route}?per_page=100&page={page}")
+            if not data or "events" not in data:
+                break
+            
+            # Events endpoint returns data differently - events are in a nested array
+            for rec in data.get("events", []):
+                try:
+                    # Events have different structure
+                    hid = rec["id"]
+                    hsh = digest(rec)
+                    seen.add(hid)
+
+                    c.execute("SELECT hash FROM items WHERE type=? AND id=?",
+                              (kind, hid))
+                    row = c.fetchone()
+
+                    if not row:  # — new item —
+                        emit(f"[NEW {kind}] {rec.get('title', '')}")
+                        c.execute("""INSERT OR REPLACE INTO items
+                                    VALUES (?,?,?,?,?)""",
+                                 (kind, hid, hsh, json.dumps(rec),
+                                  dt.date.today().isoformat()))
+                    elif row[0] != hsh:  # — changed item —
+                        emit(f"[UPDATED {kind}] id {hid}")
+                        c.execute("""UPDATE items SET hash=?, raw=?, updated=?
+                                    WHERE type=? AND id=?""",
+                                 (hsh, json.dumps(rec),
+                                  dt.date.today().isoformat(), kind, hid))
+                    # Commit after each record to save progress
+                    DB.commit()
+                except Exception as e:
+                    emit(f"[ERROR processing event] {str(e)}")
+                    continue
+            
+            # The events API might use a different pagination method
+            if data.get("next_page", False):
+                page += 1
+            else:
+                break
+
+        # removals
+        c.execute("SELECT id FROM items WHERE type=?", (kind,))
+        for (old_id,) in c.fetchall():
+            if old_id not in seen:
+                emit(f"[REMOVED {kind}] id {old_id}")
+                c.execute("DELETE FROM items WHERE type=? AND id=?",
+                         (kind, old_id))
+        
+        # Final commit for any removals
+        DB.commit()
+    except Exception as e:
+        emit(f"[ERROR in sync_events] {str(e)}")
+        # Ensure we commit any changes so far
+        DB.commit()
+
 # ---------- run all ----------
 try:
+    # Sync standard content types
     for kind, route in TABLES.items():
         emit(f"[INFO] Starting sync for {kind}")
         sync_one(kind, route)
         emit(f"[INFO] Completed sync for {kind}")
+    
+    # Try to sync events
+    emit(f"[INFO] Starting sync for events")
+    sync_events()
+    emit(f"[INFO] Completed sync for events")
     
     emit("[INFO] All syncs completed successfully")
 except Exception as e:
