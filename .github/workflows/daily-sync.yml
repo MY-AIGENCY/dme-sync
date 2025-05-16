@@ -36,4 +36,42 @@ jobs:
           git config --local user.name "GitHub Action"
           git add dme.db
           git diff --quiet && git diff --staged --quiet || git commit -m "Update database - $(date +'%Y-%m-%d')"
-          git push origin HEAD:main 
+          git push origin HEAD:main
+      
+      # Optional Discord/Slack notification
+      - name: Send notification
+        if: success()
+        env:
+          WEBHOOK_URL: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
+        run: |
+          if [[ -n "$WEBHOOK_URL" ]]; then
+            # Check if there were changes
+            if git diff --name-only HEAD HEAD~1 | grep -q "dme.db"; then
+              COUNT=$(sqlite3 dme.db "SELECT COUNT(*) FROM items")
+              MESSAGE="DME Sync completed successfully. Database now contains $COUNT items."
+            else
+              MESSAGE="DME Sync completed successfully. No changes detected."
+            fi
+            
+            # For Discord
+            if [[ "$WEBHOOK_URL" == *"discord.com"* ]]; then
+              curl -H "Content-Type: application/json" -d "{\"content\":\"$MESSAGE\"}" "$WEBHOOK_URL"
+            # For Slack
+            elif [[ "$WEBHOOK_URL" == *"slack.com"* ]]; then
+              curl -H "Content-Type: application/json" -d "{\"text\":\"$MESSAGE\"}" "$WEBHOOK_URL"
+            fi
+          fi
+      
+      # Trigger Knowledge Base update workflow
+      - name: Trigger KB Build
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-kb.yml',
+              ref: 'main'
+            }) 
