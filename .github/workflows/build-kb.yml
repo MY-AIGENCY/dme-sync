@@ -1,0 +1,98 @@
+name: Build DME Knowledge Base
+
+on:
+  schedule:
+    # Run daily at 03:00 UTC (night-time in US)
+    - cron: '0 3 * * *'
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-kb:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to commit back changes
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run SQLite to KB update
+        run: python kb_update.py
+      
+      - name: Commit updated KB file
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add master_kb.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update knowledge base - $(date +'%Y-%m-%d')"
+          git push origin HEAD:main
+          
+      - name: Run embedding and vector upload
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          PINECONE_ENVIRONMENT: ${{ secrets.PINECONE_ENVIRONMENT }}
+          PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
+          # Typesense is optional, so these may not be set
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+        run: |
+          # Check for required API keys
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "Error: OPENAI_API_KEY is required"
+            exit 1
+          fi
+          
+          if [ -z "$PINECONE_API_KEY" ]; then
+            echo "Error: PINECONE_API_KEY is required"
+            exit 1
+          fi
+          
+          # Typesense is optional, print status message
+          if [ -z "$TYPESENSE_API_KEY" ]; then
+            echo "Notice: TYPESENSE_API_KEY not set, Typesense integration will be skipped"
+          fi
+          
+          # Run the embedding and upsert script
+          python embed_upsert.py
+        
+      - name: Create log artifact
+        run: |
+          mkdir -p logs
+          echo "KB update completed at $(date)" > logs/kb_update.log
+          echo "Embedding and vector upload completed at $(date)" > logs/embed_upsert.log
+          
+      - name: Upload logs as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: kb-build-logs
+          path: logs/
+      
+      - name: Send notification
+        if: success()
+        env:
+          SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
+        run: |
+          if [ -n "$SLACK_HOOK" ]; then
+            MESSAGE="DME KB update complete. Knowledge base updated and vectors uploaded to Pinecone."
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"$MESSAGE\"}" "$SLACK_HOOK"
+          fi
+      
+      - name: Report completion status
+        if: success()
+        run: echo "Knowledge base build complete and vectors uploaded to Pinecone!" 
