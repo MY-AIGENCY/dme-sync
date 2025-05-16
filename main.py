@@ -119,39 +119,39 @@ else:
         if PINECONE_INDEX_NAME not in index_list.names():
             logging.info(f"Index {PINECONE_INDEX_NAME} does not exist. Creating it now...")
             try:
-                # Create the index - use gcp-starter for free plan
-                try:
-                    pc.create_index(
-                        name=PINECONE_INDEX_NAME,
-                        dimension=1536,  # For OpenAI's text-embedding-3-small
-                        metric='cosine',
-                        spec=pinecone.ServerlessSpec(
-                            cloud='gcp',
-                            region='us-central1'
-                        )
+                # Create the index - use aws us-east-1 for free tier (as per Pinecone's recommendation)
+                # The error message indicates this is the only supported region for free accounts now
+                pc.create_index(
+                    name=PINECONE_INDEX_NAME,
+                    dimension=1536,  # For OpenAI's text-embedding-3-small
+                    metric='cosine',
+                    spec=pinecone.ServerlessSpec(
+                        cloud='aws',
+                        region='us-east-1'
                     )
-                except Exception as spec_error:
-                    logging.warning(f"Error with ServerlessSpec: {spec_error}")
-                    logging.info("Trying PodSpec instead...")
-                    # Fallback to PodSpec for other account types
-                    pc.create_index(
-                        name=PINECONE_INDEX_NAME,
-                        dimension=1536,
-                        metric='cosine',
-                        spec=pinecone.PodSpec(
-                            environment='gcp-starter'
-                        )
-                    )
-                
+                )
                 logging.info(f"Successfully created Pinecone index: {PINECONE_INDEX_NAME}")
+                
+                # Connect to the index
+                pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+                logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
             except Exception as e:
                 logging.error(f"Error creating Pinecone index: {e}")
-                logging.warning("Using a different index name as fallback")
-                PINECONE_INDEX_NAME = "default-kb"
-        
-        # Connect to the index
-        pinecone_index = pc.Index(PINECONE_INDEX_NAME)
-        logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
+                # If we can't create an index, we'll need to use an existing one
+                logging.info("Cannot create a new index. Please create a Pinecone index manually in AWS us-east-1 region.")
+                # Don't use fallback name as it also won't exist
+                logging.warning("Vector database functionality will be disabled.")
+                # Don't try to connect to an index that doesn't exist
+                pinecone_index = None
+        else:
+            # Connect to existing index
+            try:
+                pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+                logging.info(f"Successfully connected to Pinecone index: {PINECONE_INDEX_NAME}")
+            except Exception as e:
+                logging.error(f"Error connecting to Pinecone index: {e}")
+                logging.warning("Vector database functionality will be disabled.")
+                pinecone_index = None
     except Exception as e:
         logging.error(f"Error connecting to Pinecone: {e}")
         logging.info("Pinecone connection failed. Search and ingestion will be disabled.")
