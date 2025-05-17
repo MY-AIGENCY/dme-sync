@@ -479,12 +479,29 @@ async def search_adapter(request: Request):
                     }
                 )
             
-            # Handle non-standard format as fallback
-            if msg.get("type") != "function-call":
-                query = None
-                
-                # Try to extract from various legacy formats as a last resort
-                
+            # Try to extract query from various formats regardless of message type
+            query = None
+            
+            # First check if we have a standard function-call format
+            if msg.get("type") == "function-call" and "functionCall" in msg:
+                function_call = msg["functionCall"]
+                if function_call.get("name") == "knowledge_search":
+                    params = function_call.get("parameters", {})
+                    if isinstance(params, str):
+                        try:
+                            params = json.loads(params)
+                        except json.JSONDecodeError:
+                            return JSONResponse(
+                                status_code=400,
+                                content={
+                                    "error": "invalid_parameters",
+                                    "hint": "Parameters must be valid JSON"
+                                }
+                            )
+                    query = params.get("q")
+            
+            # If standard format didn't yield a query, try alternative formats
+            if not query:
                 # Extract from toolCalls array (OpenAI format)
                 if "toolCalls" in msg and msg["toolCalls"]:
                     tool_call = msg["toolCalls"][0]
@@ -583,21 +600,9 @@ async def search_adapter(request: Request):
                         pass
         else:
             # Successfully parsed using Pydantic model
-            if msg.type != "function-call" or not msg.functionCall:
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "error": "invalid_message_type",
-                        "hint": "Message type must be 'function-call'"
-                    }
-                )
-                
-            if msg.functionCall.name != "knowledge_search":
-                return {"result": f"Unknown function {msg.functionCall.name}"}
-                
-            # Extract parameters
+            # Extract parameters from standard format
             params = {}
-            if msg.functionCall.parameters:
+            if msg.functionCall and msg.functionCall.parameters:
                 if isinstance(msg.functionCall.parameters, str):
                     try:
                         params = json.loads(msg.functionCall.parameters)
@@ -613,6 +618,16 @@ async def search_adapter(request: Request):
                     params = msg.functionCall.parameters
                     
             query = params.get("q")
+            # If params has a nested structure with arguments that contain q
+            if not query and isinstance(params, dict) and "arguments" in params:
+                if isinstance(params["arguments"], dict):
+                    query = params["arguments"].get("q")
+                elif isinstance(params["arguments"], str):
+                    try:
+                        arg_dict = json.loads(params["arguments"])
+                        query = arg_dict.get("q")
+                    except json.JSONDecodeError:
+                        pass
         
         if not query:
             logging.error("Could not extract query from request")
