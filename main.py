@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Header, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import openai
@@ -12,6 +12,10 @@ import logging
 import time
 from datetime import datetime
 import hashlib
+from fastapi.responses import JSONResponse
+
+# Import the rate limiter
+from rate_limit import rate_limit_middleware
 
 # Configure logging
 logging.basicConfig(
@@ -59,6 +63,7 @@ PINECONE_ENVIRONMENT = os.environ.get("PINECONE_ENVIRONMENT") or os.getenv("PINE
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME") or os.getenv("PINECONE_INDEX_NAME", "dme-kb")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 TOP_K = int(os.environ.get("TOP_K") or os.getenv("TOP_K", "5"))
+VAPI_TOKEN = os.environ.get("VAPI_TOKEN") or os.getenv("VAPI_TOKEN") or os.environ.get("VAPI_SECRET_KEY") or os.getenv("VAPI_SECRET_KEY", "")
 
 # Debug: Print available key info
 logging.info("=== API Key Debug ===")
@@ -177,6 +182,24 @@ class SearchResponse(BaseModel):
     query: str
     processingTimeMs: int
 
+class VapiToolCall(BaseModel):
+    """Model representing a single tool call from Vapi"""
+    id: str
+    name: str
+    arguments: Dict[str, Any]
+
+class VapiToolCallList(BaseModel):
+    """Model representing the list of tool calls from Vapi"""
+    toolCallList: List[VapiToolCall]
+
+class VapiRequest(BaseModel):
+    """Model representing the structure of a Vapi function call request"""
+    message: VapiToolCallList
+
+class VapiResponse(BaseModel):
+    """Model representing the structure of a response back to Vapi"""
+    results: List[Dict[str, Any]]
+
 def get_embedding(text, model=EMBEDDING_MODEL):
     """Get embedding for text using OpenAI API"""
     if not openai_client:
@@ -263,50 +286,11 @@ async def search(
     filter_type: Optional[str] = Query(None, description="Filter by content type"),
 ):
     """Search the knowledge base"""
-    if not openai_client or not pinecone_index:
-        raise HTTPException(status_code=503, 
-                           detail="API not fully functional. Missing required API keys: " + ", ".join(missing_keys))
-    
-    start_time = time.time()
-    logging.info(f"Search query: {q}")
-    
-    # Get embedding for query
-    query_embedding = get_embedding(q)
-    
-    # Prepare filter
-    filter_dict = {}
-    if filter_type:
-        filter_dict["type"] = {"$eq": filter_type}
-    
-    # Search Pinecone
     try:
-        search_results = pinecone_index.query(
-            vector=query_embedding,
-            top_k=top_k,
-            include_metadata=True,
-            filter=filter_dict if filter_dict else None
-        )
-        
-        # Process results
-        results = []
-        for match in search_results["matches"]:
-            results.append({
-                "id": match["id"],
-                "score": match["score"],
-                "metadata": match["metadata"]
-            })
-        
-        end_time = time.time()
-        processing_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
-        
-        return {
-            "results": results,
-            "query": q,
-            "processingTimeMs": processing_time
-        }
+        return await search_kb(q, top_k, filter_type)
     except Exception as e:
-        logging.error(f"Error searching Pinecone: {e}")
-        raise HTTPException(status_code=500, detail=f"Error searching Pinecone: {str(e)}")
+        logging.error(f"Error in search endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error searching knowledge base: {str(e)}")
 
 @app.get("/health")
 async def health_check():
@@ -336,6 +320,161 @@ async def root():
         "status": "degraded" if missing_keys else "healthy",
         "documentation": "/docs",
         "health": "/health"
+    }
+
+@app.post("/vapi-search")
+async def vapi_search(
+    request: Request,
+    vapi_request: VapiRequest, 
+    authorization: Optional[str] = Header(None),
+    x_vapi_version: Optional[str] = Header(None)
+):
+    """
+    Handle search requests from Vapi.ai
+    
+    This endpoint accepts POST requests from Vapi.ai's function calling system,
+    extracts the search query, forwards it to our search functionality,
+    and returns the results in Vapi's expected format.
+    """
+    # Apply rate limiting
+    await rate_limit_middleware(request)
+    
+    # Set rate limit headers in response if available
+    response = Response()
+    if hasattr(request.state, "rate_limit_headers"):
+        for header, value in request.state.rate_limit_headers.items():
+            response.headers[header] = value
+    
+    # Log Vapi version if provided (for tracking API changes)
+    if x_vapi_version:
+        logging.info(f"Received request with Vapi version: {x_vapi_version}")
+    
+    # Verify the auth token if defined in environment
+    if VAPI_TOKEN:
+        expected_auth = f"Bearer {VAPI_TOKEN}"
+        if not authorization or authorization != expected_auth:
+            logging.warning("Unauthorized Vapi request: Invalid or missing authorization header")
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "unauthorized",
+                    "hint": "Authorization header with Bearer token required"
+                },
+                headers=response.headers
+            )
+    
+    logging.info("Received authorized Vapi search request")
+    
+    try:
+        # Extract tool call information from the request
+        if not hasattr(vapi_request.message, "toolCallList") or not vapi_request.message.toolCallList:
+            raise ValueError("Missing toolCallList in request")
+        
+        # Get the first tool call
+        tool_call = vapi_request.message.toolCallList[0]
+        tool_call_id = tool_call.id
+        
+        # Extract search parameters
+        search_query = tool_call.arguments.get("query") or tool_call.arguments.get("q", "")
+        top_k = tool_call.arguments.get("top_k", TOP_K)
+        filter_type = tool_call.arguments.get("filter_type")
+        
+        if not search_query:
+            raise ValueError("Missing required parameter: query or q")
+        
+        # Log the parsed request for debugging
+        logging.info(f"Vapi tool call - id: {tool_call_id}, query: {search_query}, top_k: {top_k}")
+        
+        start_time = time.time()
+        
+        # Call the internal search function
+        search_response = await search_kb(search_query, top_k, filter_type)
+        
+        end_time = time.time()
+        processing_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
+        
+        # Format the response following Vapi's requirements
+        vapi_response = {
+            "results": [
+                {
+                    "toolCallId": tool_call_id,
+                    "result": json.dumps(search_response)
+                }
+            ]
+        }
+        
+        logging.info(f"Completed Vapi search request in {processing_time}ms with {len(search_response['results'])} results")
+        return vapi_response
+        
+    except ValueError as e:
+        # Client error (bad request format)
+        logging.warning(f"Invalid Vapi request: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "unsupported_payload",
+                "hint": str(e)
+            },
+            headers=response.headers
+        )
+    except Exception as e:
+        # Server error
+        logging.error(f"Error processing Vapi request: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={
+                "error": "internal_error",
+                "hint": "An unexpected error occurred while processing the request"
+            },
+            headers=response.headers
+        )
+
+# Internal search function (decoupled from HTTP transport)
+async def search_kb(
+    query: str,
+    top_k: int = TOP_K,
+    filter_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """Internal search function that can be called by different endpoints"""
+    if not openai_client or not pinecone_index:
+        raise HTTPException(status_code=503, 
+                           detail="API not fully functional. Missing required API keys: " + ", ".join(missing_keys))
+    
+    start_time = time.time()
+    logging.info(f"Search query: {query}")
+    
+    # Get embedding for query
+    query_embedding = get_embedding(query)
+    
+    # Prepare filter
+    filter_dict = {}
+    if filter_type:
+        filter_dict["type"] = {"$eq": filter_type}
+    
+    # Search Pinecone
+    search_results = pinecone_index.query(
+        vector=query_embedding,
+        top_k=top_k,
+        include_metadata=True,
+        filter=filter_dict if filter_dict else None
+    )
+    
+    # Process results
+    results = []
+    for match in search_results["matches"]:
+        results.append({
+            "id": match["id"],
+            "score": match["score"],
+            "metadata": match["metadata"]
+        })
+    
+    end_time = time.time()
+    processing_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
+    
+    return {
+        "results": results,
+        "query": query,
+        "processingTimeMs": processing_time
     }
 
 if __name__ == "__main__":

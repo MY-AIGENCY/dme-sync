@@ -1,0 +1,141 @@
+{
+  "name": "DME Knowledge Base Assistant",
+  "description": "An assistant that helps users learn about DME Academy, its programs, staff, and facilities through natural voice interactions.",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.7,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant for DME Academy, a premier sports academy in Florida. Your purpose is to provide accurate, helpful, and friendly information about DME Academy, its programs, staff, facilities, achievements, and more.\n\nWhen users ask about DME Academy's programs, staff, facilities, or general information, use the searchDMEKnowledgeBase function to retrieve accurate information.\n\nPresent the search results in a friendly, conversational manner, highlighting the most relevant details. If multiple relevant results are found, summarize the most important information from all relevant sources.\n\nIf you're not sure about a specific detail, use the search function rather than making an assumption. If the search doesn't yield relevant results, acknowledge this and offer to help the user find information another way.\n\nAlways be courteous, professional, and represent DME Academy in a positive light. If asked about competitors or other schools, be respectful and focus on what makes DME Academy unique rather than criticizing others."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "messages": [
+          {
+            "type": "request-start",
+            "content": "Let me search the DME Academy knowledge base for information about that..."
+          },
+          {
+            "type": "request-complete",
+            "content": "I found some information that might help:"
+          },
+          {
+            "type": "request-failed",
+            "content": "I'm sorry, I wasn't able to search our knowledge base right now. Let me see if I can help you in another way."
+          },
+          {
+            "type": "request-response-delayed",
+            "content": "Still searching our knowledge base, please wait a moment longer.",
+            "timingMilliseconds": 5000
+          }
+        ],
+        "function": {
+          "name": "searchDMEKnowledgeBase",
+          "description": "Search the DME Academy knowledge base for information about a specific topic, person, or program.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "The search query text"
+              },
+              "top_k": {
+                "type": "integer",
+                "description": "Number of results to return (default: 5)",
+                "default": 5
+              },
+              "filter_type": {
+                "type": "string",
+                "description": "Optional filter by content type (e.g., 'news', 'page', 'staff', 'program')",
+                "enum": ["news", "page", "staff", "program"]
+              }
+            },
+            "required": ["query"]
+          }
+        },
+        "async": false,
+        "server": {
+          "url": "https://YOUR_SERVER_URL/vapi-search",
+          "headers": {
+            "X-Vapi-Secret": "YOUR_VAPI_SECRET_KEY"
+          }
+        }
+      }
+    ]
+  },
+  "voice": {
+    "provider": "playht",
+    "voiceId": "mary",
+    "speed": 1.0
+  },
+  "firstMessage": "Hello! I'm the DME Academy assistant. I can help you learn about our programs, staff, facilities, and more. How may I assist you today?",
+  "firstMessageMode": "assistant-speaks-first",
+  "firstMessageInterruptionsEnabled": true,
+  "silenceTimeoutSeconds": 30,
+  "maxDurationSeconds": 1800,
+  "clientMessages": [
+    "conversation-update",
+    "function-call",
+    "hang",
+    "model-output",
+    "speech-update",
+    "status-update",
+    "tool-calls",
+    "transcript",
+    "user-interrupted",
+    "voice-input"
+  ],
+  "serverMessages": [
+    "conversation-update",
+    "end-of-call-report",
+    "function-call",
+    "hang",
+    "speech-update",
+    "status-update",
+    "tool-calls",
+    "user-interrupted"
+  ],
+  "artifactPlan": {
+    "recordingEnabled": true,
+    "transcriptPlan": {
+      "enabled": true
+    }
+  },
+  "analysisPlan": {
+    "summaryPrompt": "Provide a brief summary of this conversation with a user about DME Academy. Include the main topics discussed and any specific information the user was seeking.",
+    "structuredDataSchema": {
+      "type": "object",
+      "properties": {
+        "topics_discussed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of topics discussed during the call"
+        },
+        "information_requested": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific information the user requested"
+        },
+        "search_queries_performed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Search queries that were performed during the call"
+        },
+        "potential_follow_up": {
+          "type": "string",
+          "description": "Potential follow-up items or unanswered questions"
+        }
+      }
+    }
+  }
+} 
