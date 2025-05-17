@@ -182,23 +182,20 @@ class SearchResponse(BaseModel):
     query: str
     processingTimeMs: int
 
-class VapiToolCall(BaseModel):
-    """Model representing a single tool call from Vapi"""
-    id: str
+class VapiFunctionCall(BaseModel):
+    """Model representing a function call from Vapi"""
     name: str
-    arguments: Dict[str, Any]
+    parameters: Union[str, Dict[str, Any]]
+    id: Optional[str] = None
 
-class VapiToolCallList(BaseModel):
-    """Model representing the list of tool calls from Vapi"""
-    toolCallList: List[VapiToolCall]
+class VapiMessage(BaseModel):
+    """Model representing Vapi's standardized message format"""
+    type: str
+    functionCall: Optional[VapiFunctionCall] = None
 
 class VapiRequest(BaseModel):
-    """Model representing the structure of a Vapi function call request"""
-    message: VapiToolCallList
-
-class VapiResponse(BaseModel):
-    """Model representing the structure of a response back to Vapi"""
-    results: List[Dict[str, Any]]
+    """Model representing a request from Vapi"""
+    message: VapiMessage
 
 def get_embedding(text, model=EMBEDDING_MODEL):
     """Get embedding for text using OpenAI API"""
@@ -323,111 +320,92 @@ async def root():
     }
 
 @app.post("/vapi-search")
-async def vapi_search(
-    request: Request,
-    vapi_request: VapiRequest, 
-    authorization: Optional[str] = Header(None),
-    x_vapi_version: Optional[str] = Header(None)
-):
+async def vapi_search(request: Request):
     """
-    Handle search requests from Vapi.ai
+    Handle search requests from Vapi.ai using the Server-Events format
     
-    This endpoint accepts POST requests from Vapi.ai's function calling system,
-    extracts the search query, forwards it to our search functionality,
-    and returns the results in Vapi's expected format.
+    Accepts POST requests from Vapi.ai's function calling system according to docs:
+    {
+      "message": {
+        "type": "function-call",
+        "functionCall": {
+          "name": "knowledge_search",
+          "parameters": "{ \"q\": \"query string\" }"
+        }
+      }
+    }
     """
-    # Apply rate limiting
-    await rate_limit_middleware(request)
-    
-    # Set rate limit headers in response if available
-    response = Response()
-    if hasattr(request.state, "rate_limit_headers"):
-        for header, value in request.state.rate_limit_headers.items():
-            response.headers[header] = value
-    
-    # Log Vapi version if provided (for tracking API changes)
-    if x_vapi_version:
-        logging.info(f"Received request with Vapi version: {x_vapi_version}")
-    
-    # Verify the auth token if defined in environment
-    if VAPI_TOKEN:
-        expected_auth = f"Bearer {VAPI_TOKEN}"
-        if not authorization or authorization != expected_auth:
-            logging.warning("Unauthorized Vapi request: Invalid or missing authorization header")
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "error": "unauthorized",
-                    "hint": "Authorization header with Bearer token required"
-                },
-                headers=response.headers
-            )
-    
-    logging.info("Received authorized Vapi search request")
+    # Verify auth token
+    auth = request.headers.get("authorization")
+    if VAPI_TOKEN and (not auth or auth != f"Bearer {VAPI_TOKEN}"):
+        logging.warning("Unauthorized Vapi request: Invalid or missing authorization header")
+        raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
-        # Extract tool call information from the request
-        if not hasattr(vapi_request.message, "toolCallList") or not vapi_request.message.toolCallList:
-            raise ValueError("Missing toolCallList in request")
+        # Parse request body
+        body = await request.json()
         
-        # Get the first tool call
-        tool_call = vapi_request.message.toolCallList[0]
-        tool_call_id = tool_call.id
+        # Log request details in dev mode
+        if DEV_MODE:
+            logging.info(f"Received Vapi request: {json.dumps(body)[:1000]}")
         
-        # Extract search parameters
-        search_query = tool_call.arguments.get("query") or tool_call.arguments.get("q", "")
-        top_k = tool_call.arguments.get("top_k", TOP_K)
-        filter_type = tool_call.arguments.get("filter_type")
+        # Parse using Pydantic model
+        try:
+            vapi_req = VapiRequest.parse_obj(body)
+            msg = vapi_req.message
+        except Exception as e:
+            logging.warning(f"Failed to parse request using Pydantic model: {str(e)}")
+            # Fallback to direct dictionary access if parsing fails
+            if "message" not in body:
+                logging.warning("Invalid request format: missing 'message' field")
+                raise HTTPException(status_code=400, detail="Invalid request format")
+                
+            msg = body["message"]
+            
+        # Handle only function-call message types
+        if msg.type != "function-call" or not msg.functionCall:
+            logging.info("Ignoring non-function-call event")
+            return {}  # Ignore non-function events
         
-        if not search_query:
-            raise ValueError("Missing required parameter: query or q")
+        # Handle only knowledge_search function calls
+        if msg.functionCall.name != "knowledge_search":
+            logging.warning(f"Unknown function: {msg.functionCall.name}")
+            return {"result": f"Unknown function {msg.functionCall.name}"}
         
-        # Log the parsed request for debugging
-        logging.info(f"Vapi tool call - id: {tool_call_id}, query: {search_query}, top_k: {top_k}")
+        # Extract parameters
+        params = {}
+        if hasattr(msg.functionCall, "parameters") and msg.functionCall.parameters is not None:
+            # Handle if parameters is a string
+            if isinstance(msg.functionCall.parameters, str):
+                try:
+                    params = json.loads(msg.functionCall.parameters)
+                except json.JSONDecodeError:
+                    logging.error(f"Invalid JSON in parameters: {msg.functionCall.parameters}")
+                    return {"result": "Invalid parameters format"}
+            else:
+                params = msg.functionCall.parameters
         
-        start_time = time.time()
+        # Extract query
+        q = params.get("q")
+        if not q:
+            logging.warning("Missing required parameter: q")
+            return {"result": "Missing q parameter"}
         
-        # Call the internal search function
-        search_response = await search_kb(search_query, top_k, filter_type)
+        # Get optional parameters
+        top_k = params.get("top_k", 3)
+        filter_type = params.get("filter_type", None)
         
-        end_time = time.time()
-        processing_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
+        # Call the search function
+        logging.info(f"Searching for query: {q}, top_k: {top_k}")
+        result = await search_kb(q, top_k=top_k, filter_type=filter_type)
         
-        # Format the response following Vapi's requirements
-        vapi_response = {
-            "results": [
-                {
-                    "toolCallId": tool_call_id,
-                    "result": json.dumps(search_response)
-                }
-            ]
-        }
+        # Format the response according to Vapi's documented format
+        logging.info(f"Search complete, found {len(result.get('results', []))} results")
+        return {"result": result.get("results", [])}
         
-        logging.info(f"Completed Vapi search request in {processing_time}ms with {len(search_response['results'])} results")
-        return vapi_response
-        
-    except ValueError as e:
-        # Client error (bad request format)
-        logging.warning(f"Invalid Vapi request: {str(e)}")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "unsupported_payload",
-                "hint": str(e)
-            },
-            headers=response.headers
-        )
     except Exception as e:
-        # Server error
-        logging.error(f"Error processing Vapi request: {e}")
-        return JSONResponse(
-            status_code=500, 
-            content={
-                "error": "internal_error",
-                "hint": "An unexpected error occurred while processing the request"
-            },
-            headers=response.headers
-        )
+        logging.error(f"Error processing Vapi request: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
 @app.post("/search")
 async def search_adapter(request: Request):
@@ -435,72 +413,158 @@ async def search_adapter(request: Request):
     Adapter endpoint for Vapi requests that are sent to /search
     instead of the configured /vapi-search endpoint.
     
-    This handles the actual format Vapi is sending and extracts the query parameter.
+    This uses Vapi's standardized format as documented:
+    {
+      "message": {
+        "type": "function-call",
+        "functionCall": {
+          "name": "knowledge_search",
+          "parameters": "{ \"q\": \"query string\" }"
+        }
+      }
+    }
     """
     logging.info("Received request to /search endpoint (Vapi adapter)")
     
+    # Verify auth token
+    auth = request.headers.get("authorization")
+    if VAPI_TOKEN and (not auth or auth != f"Bearer {VAPI_TOKEN}"):
+        logging.warning("Unauthorized Vapi request: Invalid or missing authorization header")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
-        # Get raw body content for detailed logging
-        body_raw = await request.body()
-        body_text = body_raw.decode('utf-8')
-        logging.info(f"Raw request body to /search: {body_text[:1000]}")
+        # Get raw body content for detailed logging if in dev mode
+        if DEV_MODE:
+            body_raw = await request.body()
+            body_text = body_raw.decode('utf-8')
+            logging.info(f"Raw request body to /search: {body_text[:1000]}")
         
         # Parse and process the request
         body = await request.json()
         
-        # Extract query directly from the request structure
-        query = None
-        tool_call_id = None
-        
-        if "message" in body:
-            message = body["message"]
+        # Parse using Pydantic model
+        try:
+            vapi_req = VapiRequest.parse_obj(body)
+            msg = vapi_req.message
+        except Exception as e:
+            logging.warning(f"Failed to parse request using Pydantic model: {str(e)}")
+            # Fallback to direct dictionary access
+            if "message" not in body:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "invalid_request",
+                        "hint": "Request must include a 'message' field"
+                    }
+                )
             
-            # Try to extract from toolCalls array
-            if "toolCalls" in message and message["toolCalls"]:
-                tool_call = message["toolCalls"][0]
-                if "function" in tool_call and "arguments" in tool_call["function"]:
-                    args = tool_call["function"]["arguments"]
-                    query = args.get("q") or args.get("query")
-                    tool_call_id = tool_call.get("id")
+            msg = body["message"]
+            if not isinstance(msg, dict):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "invalid_message",
+                        "hint": "Message must be an object"
+                    }
+                )
             
-            # Try to extract from toolCallList as fallback
-            elif "toolCallList" in message and message["toolCallList"]:
-                tool_call = message["toolCallList"][0]
-                if "function" in tool_call and "arguments" in tool_call["function"]:
-                    args = tool_call["function"]["arguments"]
-                    query = args.get("q") or args.get("query")
-                    tool_call_id = tool_call.get("id")
-            
-            # Try to extract from toolWithToolCallList as another fallback
-            elif "toolWithToolCallList" in message and message["toolWithToolCallList"]:
-                tool_with_call = message["toolWithToolCallList"][0]
-                if "toolCall" in tool_with_call:
-                    tool_call = tool_with_call["toolCall"]
+            # Handle non-standard format as fallback
+            if msg.get("type") != "function-call":
+                query = None
+                # Try to extract from various legacy formats as a last resort
+                if "toolCalls" in msg and msg["toolCalls"]:
+                    tool_call = msg["toolCalls"][0]
                     if "function" in tool_call and "arguments" in tool_call["function"]:
                         args = tool_call["function"]["arguments"]
                         query = args.get("q") or args.get("query")
-                        tool_call_id = tool_call.get("id")
+                
+                if query:
+                    logging.warning("Found query using legacy format fallback")
+                    result = await search_kb(query, top_k=5)
+                    return {"result": result.get("results", [])}
+                    
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "unsupported_format", 
+                        "hint": "Expected message.type to be 'function-call'"
+                    }
+                )
+                
+            # If we get here, we have a message with type function-call but not in the Pydantic model format
+            if "functionCall" not in msg:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "missing_function_call",
+                        "hint": "Request must include a functionCall field"
+                    }
+                )
+            
+            # Extract params from non-Pydantic format
+            function_call = msg["functionCall"]
+            if function_call.get("name") != "knowledge_search":
+                return {"result": f"Unknown function {function_call.get('name')}"}
+                
+            params = function_call.get("parameters", {})
+            if isinstance(params, str):
+                try:
+                    params = json.loads(params)
+                except json.JSONDecodeError:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "error": "invalid_parameters",
+                            "hint": "Parameters must be valid JSON"
+                        }
+                    )
+            query = params.get("q")
+        else:
+            # Successfully parsed using Pydantic model
+            if msg.type != "function-call" or not msg.functionCall:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "invalid_message_type",
+                        "hint": "Message type must be 'function-call'"
+                    }
+                )
+                
+            if msg.functionCall.name != "knowledge_search":
+                return {"result": f"Unknown function {msg.functionCall.name}"}
+                
+            # Extract parameters
+            params = {}
+            if msg.functionCall.parameters:
+                if isinstance(msg.functionCall.parameters, str):
+                    try:
+                        params = json.loads(msg.functionCall.parameters)
+                    except json.JSONDecodeError:
+                        return JSONResponse(
+                            status_code=400,
+                            content={
+                                "error": "invalid_parameters",
+                                "hint": "Parameters must be valid JSON"
+                            }
+                        )
+                else:
+                    params = msg.functionCall.parameters
+                    
+            query = params.get("q")
         
         if not query:
-            logging.error(f"Could not extract query from request: {body}")
+            logging.error("Could not extract query from request")
             return JSONResponse(
                 status_code=400,
                 content={
                     "error": "missing_parameter",
-                    "hint": "Could not find 'q' or 'query' parameter in the request"
+                    "hint": "Could not find 'q' parameter in the request"
                 }
             )
         
-        if not tool_call_id:
-            logging.warning("Could not extract tool_call_id from request, generating a fallback ID")
-            tool_call_id = f"fallback-{int(time.time())}"
-        
         logging.info(f"Successfully extracted query: '{query}' from request")
         
-        # Get the authorization header
-        authorization = request.headers.get("Authorization")
-        
-        # Directly call our search_kb function and format response for Vapi
+        # Call our internal search function
         try:
             # Use default values for optional parameters
             top_k = 5
@@ -509,18 +573,9 @@ async def search_adapter(request: Request):
             # Call our internal search function
             search_response = await search_kb(query, top_k, filter_type)
             
-            # Format the response for Vapi
-            vapi_response = {
-                "results": [
-                    {
-                        "toolCallId": tool_call_id,
-                        "result": json.dumps(search_response)
-                    }
-                ]
-            }
-            
-            logging.info(f"Sending successful response with {len(search_response['results'])} results")
-            return vapi_response
+            # Format the response according to Vapi's documented format
+            # Simply return the result as documented
+            return {"result": search_response.get("results", [])}
             
         except Exception as e:
             logging.error(f"Error during search: {str(e)}")
