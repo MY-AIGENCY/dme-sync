@@ -387,6 +387,17 @@ async def vapi_search(request: Request):
         
         # Extract query
         q = params.get("q")
+        # If params has a nested structure with arguments that contain q
+        if not q and isinstance(params, dict) and "arguments" in params:
+            if isinstance(params["arguments"], dict):
+                q = params["arguments"].get("q")
+            elif isinstance(params["arguments"], str):
+                try:
+                    arg_dict = json.loads(params["arguments"])
+                    q = arg_dict.get("q")
+                except json.JSONDecodeError:
+                    pass
+        
         if not q:
             logging.warning("Missing required parameter: q")
             return {"result": "Missing q parameter"}
@@ -471,12 +482,52 @@ async def search_adapter(request: Request):
             # Handle non-standard format as fallback
             if msg.get("type") != "function-call":
                 query = None
+                
                 # Try to extract from various legacy formats as a last resort
+                
+                # Extract from toolCalls array (OpenAI format)
                 if "toolCalls" in msg and msg["toolCalls"]:
                     tool_call = msg["toolCalls"][0]
                     if "function" in tool_call and "arguments" in tool_call["function"]:
                         args = tool_call["function"]["arguments"]
-                        query = args.get("q") or args.get("query")
+                        if isinstance(args, dict):
+                            query = args.get("q") or args.get("query")
+                        elif isinstance(args, str):
+                            try:
+                                json_args = json.loads(args)
+                                query = json_args.get("q") or json_args.get("query")
+                            except json.JSONDecodeError:
+                                pass
+                
+                # Extract from toolCallList (older Vapi format)
+                if not query and "toolCallList" in msg and msg["toolCallList"]:
+                    tool_call = msg["toolCallList"][0]
+                    if "function" in tool_call and "arguments" in tool_call["function"]:
+                        args = tool_call["function"]["arguments"]
+                        if isinstance(args, dict):
+                            query = args.get("q") or args.get("query")
+                        elif isinstance(args, str):
+                            try:
+                                json_args = json.loads(args)
+                                query = json_args.get("q") or json_args.get("query")
+                            except json.JSONDecodeError:
+                                pass
+                
+                # Extract from toolWithToolCallList (another format)
+                if not query and "toolWithToolCallList" in msg and msg["toolWithToolCallList"]:
+                    tool_with_call = msg["toolWithToolCallList"][0]
+                    if "toolCall" in tool_with_call:
+                        tool_call = tool_with_call["toolCall"]
+                        if "function" in tool_call and "arguments" in tool_call["function"]:
+                            args = tool_call["function"]["arguments"]
+                            if isinstance(args, dict):
+                                query = args.get("q") or args.get("query")
+                            elif isinstance(args, str):
+                                try:
+                                    json_args = json.loads(args)
+                                    query = json_args.get("q") or json_args.get("query")
+                                except json.JSONDecodeError:
+                                    pass
                 
                 if query:
                     logging.warning("Found query using legacy format fallback")
@@ -519,6 +570,17 @@ async def search_adapter(request: Request):
                         }
                     )
             query = params.get("q")
+            
+            # If params has a nested structure with arguments that contain q
+            if not query and isinstance(params, dict) and "arguments" in params:
+                if isinstance(params["arguments"], dict):
+                    query = params["arguments"].get("q")
+                elif isinstance(params["arguments"], str):
+                    try:
+                        arg_dict = json.loads(params["arguments"])
+                        query = arg_dict.get("q")
+                    except json.JSONDecodeError:
+                        pass
         else:
             # Successfully parsed using Pydantic model
             if msg.type != "function-call" or not msg.functionCall:
