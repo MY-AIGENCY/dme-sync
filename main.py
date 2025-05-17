@@ -429,6 +429,92 @@ async def vapi_search(
             headers=response.headers
         )
 
+@app.post("/search")
+async def search_adapter(request: Request):
+    """
+    Adapter endpoint for Vapi requests that are sent to /search
+    instead of the configured /vapi-search endpoint.
+    
+    This minimally processes the request to match our VapiRequest format
+    and then reuses the existing vapi_search handler.
+    """
+    logging.info("Received request to /search endpoint (Vapi adapter)")
+    
+    try:
+        # Capture and log the raw request for diagnostics
+        body = await request.json()
+        logging.info(f"Raw request to /search: {json.dumps(body)[:500]}...")
+        
+        # Create a properly formatted request for our vapi_search handler
+        formatted_request = None
+        tool_call = None
+        
+        # Extract message and determine the correct format
+        if "message" in body:
+            message = body["message"]
+            
+            # Check different possible structures
+            if "toolCallList" in message and message["toolCallList"]:
+                # Already in the format we expect
+                formatted_request = body
+                logging.info("Request uses toolCallList format")
+            
+            elif "toolCalls" in message and message["toolCalls"]:
+                # Convert from toolCalls to toolCallList
+                tool_call = message["toolCalls"][0]
+                logging.info("Converting from toolCalls format")
+                
+                # Create a new request with the expected format
+                formatted_request = {
+                    "message": {
+                        "toolCallList": [tool_call]
+                    }
+                }
+            
+            elif "toolWithToolCallList" in message and message["toolWithToolCallList"]:
+                # Extract from toolWithToolCallList
+                tool_with_call = message["toolWithToolCallList"][0]
+                if "toolCall" in tool_with_call:
+                    tool_call = tool_with_call["toolCall"]
+                    logging.info("Converting from toolWithToolCallList format")
+                    
+                    # Create a new request with the expected format
+                    formatted_request = {
+                        "message": {
+                            "toolCallList": [tool_call]
+                        }
+                    }
+        
+        if not formatted_request:
+            logging.warning(f"Could not parse Vapi request format: {json.dumps(body)[:500]}...")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "unsupported_payload",
+                    "hint": "Could not determine the Vapi request format"
+                }
+            )
+        
+        # Get headers from the original request
+        authorization = request.headers.get("Authorization")
+        x_vapi_version = request.headers.get("X-Vapi-Version")
+        
+        # Create a mock VapiRequest object from the formatted request
+        vapi_request = VapiRequest.parse_obj(formatted_request)
+        
+        # Forward to our existing handler
+        return await vapi_search(request, vapi_request, authorization, x_vapi_version)
+    
+    except Exception as e:
+        logging.error(f"Error in /search adapter: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "hint": f"Error in adapter: {str(e)}"
+            }
+        )
+
 # Internal search function (decoupled from HTTP transport)
 async def search_kb(
     query: str,
