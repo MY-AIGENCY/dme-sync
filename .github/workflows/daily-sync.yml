@@ -36,8 +36,19 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add dme.db
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update database - $(date +'%Y-%m-%d')"
-          git push origin HEAD:main
+          
+          # Only commit if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update database - $(date +'%Y-%m-%d')"
+            
+            # Pull latest changes with rebase strategy to avoid merge commits
+            git pull --rebase origin main
+            
+            # Push changes
+            git push origin HEAD:main
+          fi
       
       # Optional Discord/Slack notification
       - name: Send notification
