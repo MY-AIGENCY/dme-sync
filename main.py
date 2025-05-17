@@ -435,75 +435,102 @@ async def search_adapter(request: Request):
     Adapter endpoint for Vapi requests that are sent to /search
     instead of the configured /vapi-search endpoint.
     
-    This minimally processes the request to match our VapiRequest format
-    and then reuses the existing vapi_search handler.
+    This handles the actual format Vapi is sending and extracts the query parameter.
     """
     logging.info("Received request to /search endpoint (Vapi adapter)")
     
     try:
-        # Capture and log the raw request for diagnostics
+        # Get raw body content for detailed logging
+        body_raw = await request.body()
+        body_text = body_raw.decode('utf-8')
+        logging.info(f"Raw request body to /search: {body_text[:1000]}")
+        
+        # Parse and process the request
         body = await request.json()
-        logging.info(f"Raw request to /search: {json.dumps(body)[:500]}...")
         
-        # Create a properly formatted request for our vapi_search handler
-        formatted_request = None
-        tool_call = None
+        # Extract query directly from the request structure
+        query = None
+        tool_call_id = None
         
-        # Extract message and determine the correct format
         if "message" in body:
             message = body["message"]
             
-            # Check different possible structures
-            if "toolCallList" in message and message["toolCallList"]:
-                # Already in the format we expect
-                formatted_request = body
-                logging.info("Request uses toolCallList format")
-            
-            elif "toolCalls" in message and message["toolCalls"]:
-                # Convert from toolCalls to toolCallList
+            # Try to extract from toolCalls array
+            if "toolCalls" in message and message["toolCalls"]:
                 tool_call = message["toolCalls"][0]
-                logging.info("Converting from toolCalls format")
-                
-                # Create a new request with the expected format
-                formatted_request = {
-                    "message": {
-                        "toolCallList": [tool_call]
-                    }
-                }
+                if "function" in tool_call and "arguments" in tool_call["function"]:
+                    args = tool_call["function"]["arguments"]
+                    query = args.get("q") or args.get("query")
+                    tool_call_id = tool_call.get("id")
             
+            # Try to extract from toolCallList as fallback
+            elif "toolCallList" in message and message["toolCallList"]:
+                tool_call = message["toolCallList"][0]
+                if "function" in tool_call and "arguments" in tool_call["function"]:
+                    args = tool_call["function"]["arguments"]
+                    query = args.get("q") or args.get("query")
+                    tool_call_id = tool_call.get("id")
+            
+            # Try to extract from toolWithToolCallList as another fallback
             elif "toolWithToolCallList" in message and message["toolWithToolCallList"]:
-                # Extract from toolWithToolCallList
                 tool_with_call = message["toolWithToolCallList"][0]
                 if "toolCall" in tool_with_call:
                     tool_call = tool_with_call["toolCall"]
-                    logging.info("Converting from toolWithToolCallList format")
-                    
-                    # Create a new request with the expected format
-                    formatted_request = {
-                        "message": {
-                            "toolCallList": [tool_call]
-                        }
-                    }
+                    if "function" in tool_call and "arguments" in tool_call["function"]:
+                        args = tool_call["function"]["arguments"]
+                        query = args.get("q") or args.get("query")
+                        tool_call_id = tool_call.get("id")
         
-        if not formatted_request:
-            logging.warning(f"Could not parse Vapi request format: {json.dumps(body)[:500]}...")
+        if not query:
+            logging.error(f"Could not extract query from request: {body}")
             return JSONResponse(
                 status_code=400,
                 content={
-                    "error": "unsupported_payload",
-                    "hint": "Could not determine the Vapi request format"
+                    "error": "missing_parameter",
+                    "hint": "Could not find 'q' or 'query' parameter in the request"
                 }
             )
         
-        # Get headers from the original request
+        if not tool_call_id:
+            logging.warning("Could not extract tool_call_id from request, generating a fallback ID")
+            tool_call_id = f"fallback-{int(time.time())}"
+        
+        logging.info(f"Successfully extracted query: '{query}' from request")
+        
+        # Get the authorization header
         authorization = request.headers.get("Authorization")
-        x_vapi_version = request.headers.get("X-Vapi-Version")
         
-        # Create a mock VapiRequest object from the formatted request
-        vapi_request = VapiRequest.parse_obj(formatted_request)
-        
-        # Forward to our existing handler
-        return await vapi_search(request, vapi_request, authorization, x_vapi_version)
+        # Directly call our search_kb function and format response for Vapi
+        try:
+            # Use default values for optional parameters
+            top_k = 5
+            filter_type = None
+            
+            # Call our internal search function
+            search_response = await search_kb(query, top_k, filter_type)
+            
+            # Format the response for Vapi
+            vapi_response = {
+                "results": [
+                    {
+                        "toolCallId": tool_call_id,
+                        "result": json.dumps(search_response)
+                    }
+                ]
+            }
+            
+            logging.info(f"Sending successful response with {len(search_response['results'])} results")
+            return vapi_response
+            
+        except Exception as e:
+            logging.error(f"Error during search: {str(e)}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "search_error",
+                    "hint": f"Error processing search: {str(e)}"
+                }
+            )
     
     except Exception as e:
         logging.error(f"Error in /search adapter: {str(e)}")
