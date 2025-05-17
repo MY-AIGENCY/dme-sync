@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # This is needed for push access
+      actions: write   # This is needed to trigger workflows
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -62,16 +63,24 @@ jobs:
             fi
           fi
       
-      # Trigger Knowledge Base update workflow
+      # Trigger Knowledge Base update workflow using workflow_dispatch event
       - name: Trigger KB Build
         if: success()
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Use repository PAT instead of GITHUB_TOKEN for cross-workflow permissions
+          github-token: ${{ secrets.WORKFLOW_PAT }}
           script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-kb.yml',
-              ref: 'main'
-            }) 
+            try {
+              console.log('Triggering build-kb.yml workflow...');
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'build-kb.yml',
+                ref: 'main'
+              });
+              console.log('Successfully triggered build-kb.yml workflow');
+            } catch (error) {
+              console.error('Error triggering workflow:', error);
+              core.setFailed(`Failed to trigger workflow: ${error.message}`);
+            } 
