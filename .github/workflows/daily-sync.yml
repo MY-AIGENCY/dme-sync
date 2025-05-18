@@ -2,8 +2,8 @@ name: Daily DME Sync
 
 on:
   schedule:
-    # Run at 09:03 AM New York time (America/New_York)
-    - cron: '3 9 * * *'
+    # Run at 02:00 AM New York time (America/New_York)
+    - cron: '0 2 * * *'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
