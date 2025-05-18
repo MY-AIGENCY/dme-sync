@@ -1,3 +1,10 @@
+# Current Status
+
+- Completed: Section 1 (Discovery & Capture)
+- In Progress: Section 2 (Normalize & Canonicalize)
+- Next: Section 3 (Relationship Graph)
+- Blockers: None
+
 # DME Knowledge Base Pipeline
 
 A complete end-to-end pipeline for syncing content from DME Academy's website into a queryable knowledge base.
@@ -170,4 +177,10 @@ curl -X 'POST' 'http://localhost:8000/ingest' \
 ## Vapi.ai Integration
 
 The search API is designed to work with Vapi.ai. Configure your Vapi.ai function to call the `/search` endpoint.
+
+# Handoff Checklist (update at end of each session)
+
+- [ ] What was completed:
+- [ ] What remains:
+- [ ] Any blockers or questions:
 
