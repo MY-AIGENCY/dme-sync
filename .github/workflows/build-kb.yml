@@ -22,15 +22,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: pip install poetry
+      
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
+        run: poetry install --no-interaction --no-root
+      
+      - name: Lint with ruff
+        run: poetry run ruff .
+      
       - name: Run SQLite to KB update
-        run: python kb_update.py
+        run: poetry run python indexer/kb_update.py
       
       - name: Commit updated KB file
         run: |
@@ -51,25 +55,7 @@ jobs:
           TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
           TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
-        run: |
-          # Check for required API keys
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "Error: OPENAI_API_KEY is required"
-            exit 1
-          fi
-          
-          if [ -z "$PINECONE_API_KEY" ]; then
-            echo "Error: PINECONE_API_KEY is required"
-            exit 1
-          fi
-          
-          # Typesense is optional, print status message
-          if [ -z "$TYPESENSE_API_KEY" ]; then
-            echo "Notice: TYPESENSE_API_KEY not set, Typesense integration will be skipped"
-          fi
-          
-          # Run the embedding and upsert script
-          python embed_upsert.py
+        run: poetry run python indexer/embed_upsert.py
         
       - name: Create log artifact
         run: |

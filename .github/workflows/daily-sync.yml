@@ -21,15 +21,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
-          
+          python-version: '3.11'
+      
+      - name: Install Poetry
+        run: pip install poetry
+      
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
+        run: poetry install --no-interaction --no-root
+      
+      - name: Lint with ruff
+        run: poetry run ruff .
+      
       - name: Run sync script
-        run: python dme_sync.py
+        run: poetry run python scraper/dme_sync.py
         
       - name: Commit and push changes
         run: |
