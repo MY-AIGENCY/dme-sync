@@ -1,5 +1,7 @@
 # file: dme_sync.py
 import json, sqlite3, hashlib, requests, datetime as dt
+from bs4 import BeautifulSoup
+import re
 
 BASE   = "https://dmeacademy.com/wp-json"
 TABLES = {"posts": "wp/v2/posts",
@@ -40,6 +42,21 @@ def digest(obj):  # produce a stable content hash
 def emit(msg):
     # for now just print; swap in Slack/Discord webhook later
     print(msg)
+
+def extract_event_pricing(event_url):
+    try:
+        resp = requests.get(event_url, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        text = soup.get_text(separator="\n")
+        pricing = []
+        # Find all price/option lines
+        pricing += re.findall(r"3-Week\s*\|\s*Boarder:\s*\$\d[\d,]*", text)
+        pricing += re.findall(r"3-Week\s*\|\s*Commuter:\s*\$\d[\d,]*", text)
+        pricing += re.findall(r"Price\s*\$[\d,]+–\$[\d,]+", text)
+        pricing += re.findall(r"costs?\s*\$\d[\d,]+", text)
+        return pricing
+    except Exception as e:
+        return []
 
 def sync_one(kind, route):
     page = 1
@@ -116,6 +133,12 @@ def sync_events():
                     hid = rec["id"]
                     hsh = digest(rec)
                     seen.add(hid)
+
+                    # --- ADDED: Extract pricing/options from event page ---
+                    event_url = rec.get("url") or rec.get("link")
+                    if event_url:
+                        rec["extracted_pricing"] = extract_event_pricing(event_url)
+                    # --- END ADDED ---
 
                     c.execute("SELECT hash FROM items WHERE type=? AND id=?",
                               (kind, hid))
