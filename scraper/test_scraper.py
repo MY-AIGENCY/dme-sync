@@ -6,8 +6,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from scraper import run_scraper_pipeline
 
 if __name__ == "__main__":
-    # Use a public sitemap for testing
-    sitemap_url = "https://www.gov.uk/sitemap.xml"
-    print("Starting scraper pipeline test...")
-    run_scraper_pipeline(sitemap_url)
+    # Run on the actual DME Academy site
+    site_url = "https://dmeacademy.com"
+    print("Starting scraper pipeline test on DME Academy...")
+    run_scraper_pipeline(site_url)
     print("Scraper pipeline test completed.") 
