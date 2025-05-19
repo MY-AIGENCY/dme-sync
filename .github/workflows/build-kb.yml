@@ -26,13 +26,13 @@ jobs:
       
       - name: Install Poetry
         run: pip install poetry
-      
+          
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
       
       - name: Lint with ruff
         run: poetry run ruff .
-      
+          
       - name: Run SQLite to KB update
         run: poetry run python indexer/kb_update.py
       
