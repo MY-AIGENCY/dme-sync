@@ -8,3 +8,7 @@ env/
 venv/
 ENV/
 legacy_build/
+.DS_Store
+bfg-*.jar
+..bfg-report/
+.AI_SESSION_PROMPT.md
