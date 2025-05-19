@@ -11,15 +11,15 @@ import os
 import logging
 import psycopg2
 import openai
+from dotenv import load_dotenv
 import pinecone
 import hashlib
-from dotenv import load_dotenv
 from typing import List, Dict, Any
 from tqdm import tqdm
 import re
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 POSTGRES_DSN = os.getenv("POSTGRES_DSN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -43,6 +43,8 @@ client = openai.OpenAI(api_key=OPENAI_API_KEY)
 # Initialize Pinecone
 if not PINECONE_API_KEY:
     raise ValueError("PINECONE_API_KEY environment variable is required")
+
+# Use the new Pinecone client API
 pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
 
 # Tokenizer (simple whitespace for now; TODO: use tiktoken or transformers for accurate count)
@@ -88,7 +90,10 @@ def ensure_pinecone_index():
             name=PINECONE_INDEX_NAME,
             dimension=EMBEDDING_DIMENSION,
             metric="cosine",
-            spec=pinecone.ServerlessSpec(cloud='aws', region='us-east-1')
+            spec=pinecone.ServerlessSpec(
+                cloud='aws',
+                region='us-east-1'
+            )
         )
         logging.info(f"Created Pinecone index: {PINECONE_INDEX_NAME}")
     return pc.Index(PINECONE_INDEX_NAME)
