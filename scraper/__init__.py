@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import requests
 from selectolax.parser import HTMLParser
 import boto3

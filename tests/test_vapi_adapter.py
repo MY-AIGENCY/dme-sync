@@ -5,6 +5,8 @@ import unittest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 sys.path.append('..')  # Add the parent directory to the path
 
 # Import the application

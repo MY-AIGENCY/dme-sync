@@ -11,7 +11,6 @@ dependencies = [
     "requests (>=2.32.3,<3.0.0)",
     "matplotlib (>=3.10.3,<4.0.0)",
     "openai (>=1.79.0,<2.0.0)",
-    "pinecone-client (>=6.0.0,<7.0.0)",
     "typesense (>=1.0.3,<2.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
     "python-dotenv (>=1.1.0,<2.0.0)",
@@ -31,7 +30,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-pinecone-client = {version = "^6.0.0", python = ">=3.9,<4.0"}
+pinecone = { version = "^6.0.2", python = ">=3.9,<4.0" }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.10"

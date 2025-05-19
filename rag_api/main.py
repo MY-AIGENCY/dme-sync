@@ -40,30 +40,26 @@ logging.info("======================================")
 # Load environment variables
 load_dotenv()
 
-# For Render deployment, also try to load from .env
-try:
-    if os.path.exists('.env'):
-        logging.info("Found .env file, loading variables")
-        with open('.env', 'r') as f:
-            for line in f:
-                if line.strip() and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    os.environ[key] = value
-except Exception as e:
-    logging.warning(f"Error loading .env file: {e}")
-
 # Check if we're in development mode
 DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 
 # API keys and configuration
 # Try multiple formats that Render might use
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY") or os.getenv("PINECONE_API_KEY") or ""
-PINECONE_ENVIRONMENT = os.environ.get("PINECONE_ENVIRONMENT") or os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
-PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME") or os.getenv("PINECONE_INDEX_NAME", "dme-kb")
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-TOP_K = int(os.environ.get("TOP_K") or os.getenv("TOP_K", "5"))
-VAPI_TOKEN = os.environ.get("VAPI_TOKEN") or os.getenv("VAPI_TOKEN") or os.environ.get("VAPI_SECRET_KEY") or os.getenv("VAPI_SECRET_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+TOP_K = int(os.getenv("TOP_K", "5"))
+VAPI_TOKEN = os.getenv("VAPI_TOKEN") or os.getenv("VAPI_SECRET_KEY", "")
+
+missing_keys = []
+if not OPENAI_API_KEY:
+    missing_keys.append("OPENAI_API_KEY")
+if not PINECONE_API_KEY:
+    missing_keys.append("PINECONE_API_KEY")
+if missing_keys:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_keys)}")
 
 # Debug: Print available key info
 logging.info("=== API Key Debug ===")
@@ -94,12 +90,10 @@ app.add_middleware(
 )
 
 # Check for API keys and initialize clients
-missing_keys = []
 openai_client = None
 pinecone_index = None
 
 if not OPENAI_API_KEY:
-    missing_keys.append("OPENAI_API_KEY")
     logging.warning("OPENAI_API_KEY environment variable is missing. Search and ingestion will be disabled.")
 else:
     try:
@@ -110,7 +104,6 @@ else:
         logging.error(f"Failed to initialize OpenAI client: {e}")
 
 if not PINECONE_API_KEY:
-    missing_keys.append("PINECONE_API_KEY")
     logging.warning("PINECONE_API_KEY environment variable is missing. Search and ingestion will be disabled.")
 else:
     try:

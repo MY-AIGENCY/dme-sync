@@ -1,0 +1,78 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.3, pytest-8.3.5, pluggy-1.6.0
+rootdir: /Users/jenieflortraub/Code_Projects/dme-sync
+configfile: pyproject.toml
+plugins: anyio-4.9.0
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_______________ ERROR collecting tests/test_chunk_embed_index.py _______________
+ImportError while importing test module '/Users/jenieflortraub/Code_Projects/dme-sync/tests/test_chunk_embed_index.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_chunk_embed_index.py:12: in <module>
+    from indexer import chunk_embed_index as cei
+E   ModuleNotFoundError: No module named 'indexer'
+------------------------------- Captured stdout --------------------------------
+[DEBUG] Environment variables at test start:
+MallocNanoZone: 0
+USER: jenieflortraub
+COMMAND_MODE: unix2003
+__CFBundleIdentifier: com.todesktop.230313mzl4w4u92
+PATH: /Users/jenieflortraub/Code_Projects/dme-sync/venv/bin:/Users/jenieflortraub/.cursor/extensions/ms-python.python-2024.12.3-darwin-arm64/python_files/deactivate/zsh:/Users/jenieflortraub/Code_Projects/dme-sync/venv/bin:/opt/homebrew/opt/openjdk/bin:/usr/local/opt/openjdk/bin:/usr/local/opt/openjdk/bin:/Users/jenieflortraub/.cursor/extensions/ms-python.python-2024.12.3-darwin-arm64/python_files/deactivate/zsh:/Users/jenieflortraub/Code_Projects/dme-sync/venv/bin:/opt/homebrew/opt/python@3.13/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Users/jenieflortraub/.cursor/extensions/ms-python.python-2024.12.3-darwin-arm64/python_files/deactivate/zsh:/Users/jenieflortraub/Code_Projects/dme-sync/venv/bin:/opt/homebrew/opt/openjdk/bin:/usr/local/opt/openjdk/bin:/opt/homebrew/opt/python@3.13/bin
+LOGNAME: jenieflortraub
+SSH_AUTH_SOCK: /private/tmp/com.apple.launchd.CjN6OcEskC/Listeners
+HOME: /Users/jenieflortraub
+SHELL: /bin/zsh
+TMPDIR: /var/folders/5k/pyn_mjr93qn0m3182ykjrwzm0000gn/T/
+__CF_USER_TEXT_ENCODING: 0x1F5:0x0:0x0
+XPC_SERVICE_NAME: 0
+XPC_FLAGS: 0x0
+ORIGINAL_XDG_CURRENT_DESKTOP: undefined
+CURSOR_TRACE_ID: 7404436467c0447eabc1a82134683d01
+SHLVL: 1
+PWD: /Users/jenieflortraub/Code_Projects/dme-sync
+OLDPWD: /Users/jenieflortraub/Code_Projects/dme-sync
+HOMEBREW_PREFIX: /opt/homebrew
+HOMEBREW_CELLAR: /opt/homebrew/Cellar
+HOMEBREW_REPOSITORY: /opt/homebrew
+INFOPATH: /opt/homebrew/share/info:/opt/homebrew/share/info:
+PAGER: head -n 10000 | cat
+DISABLE_AUTO_UPDATE: true
+TERM_PROGRAM: vscode
+TERM_PROGRAM_VERSION: 0.50.5
+LANG: en_US.UTF-8
+COLORTERM: truecolor
+GIT_ASKPASS: ********
+VSCODE_GIT_ASKPASS_NODE: ********
+VSCODE_GIT_ASKPASS_EXTRA_ARGS: 
+VSCODE_GIT_ASKPASS_MAIN: ********
+VSCODE_GIT_IPC_HANDLE: /var/folders/5k/pyn_mjr93qn0m3182ykjrwzm0000gn/T/vscode-git-694d63f473.sock
+SLACK_HOOK: <your-webhook-url> # optional
+OPEN_AI_KEY: ********
+PINECONE_API_KEY: ********
+PINECONE_INDEX_NAME: dme-kb
+VAPI_TOKEN: ********
+AWS_ACCESS_KEY_ID: ********
+AWS_SECRET_ACCESS_KEY: ********
+AWS_REGION: us-east-2
+S3_BUCKET_NAME: raw-site-data
+NEO4J_URI: neo4j+s://1e1e266a.databases.neo4j.io
+NEO4J_USER: neo4j
+NEO4J_PASSWORD: ********
+POSTGRES_DSN: dbname=DME_KB user=DME_KB_owner password=npg_m4wf0PvtAqKR host=ep-odd-frog-a547vh3s-pooler.us-east-2.aws.neon.tech port=5432 sslmode=require
+VIRTUAL_ENV: /Users/jenieflortraub/Code_Projects/dme-sync/venv
+VIRTUAL_ENV_PROMPT: venv
+VSCODE_INJECTION: 1
+ZDOTDIR: /Users/jenieflortraub
+USER_ZDOTDIR: /Users/jenieflortraub
+TERM: xterm-256color
+PS1: venv%n@%m %1~ %# 
+_: /Users/jenieflortraub/Code_Projects/dme-sync/venv/bin/poetry
+PYTEST_VERSION: 8.3.5
+=========================== short test summary info ============================
+ERROR tests/test_chunk_embed_index.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.05s ===============================
