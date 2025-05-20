@@ -1,0 +1,9 @@
+
+Checking Pinecone for canonical_url: https://dmeacademy.com/hockey/
+Found 10 vectors for https://dmeacademy.com/hockey/
+Example metadata:
+{'canonical_url': 'https://dmeacademy.com/hockey/', 'doc_id': '9fe5ba64235e46b3cf4419c57f98ffb4e2ffa43c4dd5754c275c923861e8363c', 'entity_type': 'program'}
+{'canonical_url': 'https://dmeacademy.com/hockey/', 'doc_id': '9fe5ba64235e46b3cf4419c57f98ffb4e2ffa43c4dd5754c275c923861e8363c', 'entity_type': 'program'}
+
+Usage for natural language search:
+  poetry run python indexer/pinecone_doc_check.py --query 'your question here'

@@ -9,6 +9,8 @@ import psycopg2
 from jsonschema import validate, ValidationError
 import boto3
 from dotenv import load_dotenv
+from datetime import datetime
+import argparse
 
 # Load environment variables
 load_dotenv()
@@ -159,19 +161,44 @@ def ensure_kb_docs_table(conn):
                 raise RuntimeError("kb_docs table missing and not auto-created in production. Please run migrations.")
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--s3-keys', type=str, help='Comma-separated list of S3 keys to process (or @file for file list)')
+    args = parser.parse_args()
     bucket = os.getenv('S3_BUCKET_NAME', 'raw-site-data')
-    quarantine_bucket = os.getenv('QUARANTINE_BUCKET_NAME')  # Optional: set in .env
+    quarantine_bucket = os.getenv('QUARANTINE_BUCKET_NAME')
     db_url = os.getenv('POSTGRES_DSN')
     conn = psycopg2.connect(db_url)
     ensure_kb_docs_table(conn)
     count = 0
-    for raw in stream_s3_raw_pages(bucket):
+    manifest = []
+    s3_keys = []
+    if args.s3_keys:
+        if args.s3_keys.startswith('@'):
+            with open(args.s3_keys[1:], 'r') as f:
+                s3_keys = [line.strip() for line in f if line.strip()]
+        else:
+            s3_keys = [k.strip() for k in args.s3_keys.split(',')]
+        raw_iter = (get_s3_object(bucket, k) for k in s3_keys)
+    else:
+        raw_iter = stream_s3_raw_pages(bucket)
+    for raw in raw_iter:
         process_raw_page(raw, conn, quarantine_bucket)
+        manifest.append({
+            's3_key': raw.get('s3_key', 'unknown'),
+            'canonical_url': raw.get('url'),
+            'doc_id': sha256_of_url(raw.get('url', '')),
+            'entity_type': detect_entity_type(raw.get('url', ''), raw.get('html', '')),
+            'normalized_at': datetime.utcnow().isoformat() + 'Z',
+        })
         count += 1
         if count % 100 == 0:
             logging.info(f"Processed {count} raw pages...")
+    # Write normalization manifest to S3
+    s3 = boto3.client('s3')
+    manifest_key = f"manifests/normalization_manifest_{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}.json"
+    s3.put_object(Bucket=bucket, Key=manifest_key, Body=json.dumps(manifest, indent=2).encode('utf-8'))
+    logging.info(f"Normalization complete. Total processed: {count}. Manifest written to {manifest_key}")
     conn.close()
-    logging.info(f"Normalization complete. Total processed: {count}")
 
 if __name__ == "__main__":
     # Usage: poetry run python -m processor.normalize_and_canonicalize

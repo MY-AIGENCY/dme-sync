@@ -1,0 +1,36 @@
+
+Searching Pinecone for: 'Tell me about DME Academy's volleyball programs.' (top_k=5)
+Found 5 matches for query: 'Tell me about DME Academy's volleyball programs.'
+
+Result 1:
+  Score: 0.6572
+  Canonical URL: https://dmeacademy.com/hockey/
+  Entity Type: program
+  No text snippet available.
+
+Result 2:
+  Score: 0.6435
+  Canonical URL: https://dmeacademy.com/hockey/
+  Entity Type: program
+  No text snippet available.
+
+Result 3:
+  Score: 0.5954
+  Canonical URL: https://dmeacademy.com/hockey/
+  Entity Type: program
+  No text snippet available.
+
+Result 4:
+  Score: 0.5928
+  Canonical URL: https://dmeacademy.com/athletics/volleyball/14-2-american/
+  Entity Type: other
+  Text Snippet: <h2> DME HAS IT all </h2> <a href="https://www.dmeacademy.com/academics/" target="_self" role="button" rel="noopener"> Learn More </a> <a href="https://www.dmeacademy.com/camps/" target="_self" role="
+
+Result 5:
+  Score: 0.5917
+  Canonical URL: https://dmeacademy.com/partners/
+  Entity Type: other
+  No text snippet available.
+
+Usage for natural language search:
+  poetry run python indexer/pinecone_doc_check.py --query 'your question here'

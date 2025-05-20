@@ -5,7 +5,7 @@ Section 4: Chunk, Embed, Index Pipeline
 - Hierarchical chunking: sections (≈512 tokens), paragraphs (≈128 tokens, 20% overlap)
 - Embeds with OpenAI (for now)
 - Upserts to Pinecone (default)
-- Modular for future Weaviate/local embedding support
+- Modular for future Weaviate/local embedding supportœ
 """
 import os
 import logging
@@ -24,6 +24,7 @@ import boto3
 import json
 import sys
 from pinecone import Pinecone
+import argparse
 
 # Load environment variables
 load_dotenv(override=True)
@@ -39,7 +40,7 @@ CHUNK_SECTION_TOKENS = int(os.getenv("CHUNK_SECTION_TOKENS", 512))
 CHUNK_PARAGRAPH_TOKENS = int(os.getenv("CHUNK_PARAGRAPH_TOKENS", 128))
 CHUNK_PARAGRAPH_OVERLAP = float(os.getenv("CHUNK_PARAGRAPH_OVERLAP", 0.2))
 CHECKPOINT_KEY = os.getenv("CHECKPOINT_KEY", "checkpoints/chunk_embed_checkpoint.json")
-DRY_RUN_LIMIT = int(os.getenv("DRY_RUN_LIMIT", 10))  # Set to 0 for full run
+DRY_RUN_LIMIT = None  # Remove limit for full production run
 BATCH_SIZE = 200
 THROTTLE_SEC = 1.0
 PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "dme-kb")  # Best practice: explicit namespace
@@ -148,7 +149,7 @@ def backoff_sleep(attempt):
     logging.warning(f"Backing off for {delay:.1f} seconds...")
     time.sleep(delay)
 
-def process_and_upsert():
+def process_and_upsert(args=None):
     logging.info("=== ENVIRONMENT VARIABLES ===")
     logging.info(f"S3_BUCKET_NAME={os.getenv('S3_BUCKET_NAME')}")
     logging.info(f"POSTGRES_DSN={os.getenv('POSTGRES_DSN')}")
@@ -156,6 +157,15 @@ def process_and_upsert():
     logging.info(f"PINECONE_NAMESPACE={PINECONE_NAMESPACE}")
     pg_conn = psycopg2.connect(POSTGRES_DSN)
     records = get_normalized_records(pg_conn)
+    targeted = False
+    if args and args.canonical_urls:
+        targeted = True
+        if args.canonical_urls.startswith('@'):
+            with open(args.canonical_urls[1:], 'r') as f:
+                url_set = set(line.strip() for line in f if line.strip())
+        else:
+            url_set = set(u.strip() for u in args.canonical_urls.split(','))
+        records = [r for r in records if r['canonical_url'] in url_set]
     logging.info(f"Loaded {len(records)} records from Postgres.")
     logging.info("First 5 canonical URLs:")
     for r in records[:5]:
@@ -164,14 +174,18 @@ def process_and_upsert():
     batch = []
     total_upserted = 0
     get_pinecone_index_stats()  # Log stats before upserts
-    start_idx = load_checkpoint()
-    end_idx = start_idx + DRY_RUN_LIMIT if DRY_RUN_LIMIT > 0 else len(records)
+    if targeted:
+        start_idx = 0
+        end_idx = len(records)
+    else:
+        start_idx = load_checkpoint()
+        end_idx = start_idx + DRY_RUN_LIMIT if DRY_RUN_LIMIT is not None else len(records)
     logging.info(f"DRY_RUN_LIMIT={DRY_RUN_LIMIT}, processing records {start_idx} to {end_idx-1} (total: {end_idx-start_idx}) out of {len(records)} available.")
     processed_docs = 0
     for doc_idx, doc in enumerate(tqdm(records, desc="Processing docs")):
         if doc_idx < start_idx:
             continue
-        if DRY_RUN_LIMIT > 0 and doc_idx >= end_idx:
+        if not targeted and DRY_RUN_LIMIT is not None and doc_idx >= end_idx:
             break
         processed_docs += 1
         # Hierarchical chunking
@@ -187,6 +201,7 @@ def process_and_upsert():
                     "doc_id": doc["doc_id"],
                     "canonical_url": doc["canonical_url"],
                     "entity_type": doc["entity_type"],
+                    "text": para[:200]  # Add snippet for preview
                 }
                 batch.append({
                     "id": chunk_id,
@@ -233,14 +248,17 @@ def process_and_upsert():
                 backoff_sleep(attempt)
     logging.info(f"Chunk, embed, index pipeline complete. Processed {processed_docs} docs in this run.")
     pg_conn.close()
-    if DRY_RUN_LIMIT > 0:
+    if DRY_RUN_LIMIT is not None:
         logging.info("DRY_RUN_LIMIT reached, exiting early for test.")
         sys.exit(0)
 
 # TODO: Add Weaviate and local embedding support (modularize get_embedding and upsert)
 
 def main():
-    process_and_upsert()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--canonical-urls', type=str, help='Comma-separated list of canonical URLs to process (or @file for file list)')
+    args = parser.parse_args()
+    process_and_upsert(args)
 
 def test_pinecone_hybrid_index():
     from pinecone import Pinecone, ServerlessSpec

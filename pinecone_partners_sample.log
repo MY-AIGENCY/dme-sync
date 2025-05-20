@@ -1,0 +1,9 @@
+
+Checking Pinecone for canonical_url: https://dmeacademy.com/partners/
+Found 10 vectors for https://dmeacademy.com/partners/
+Example metadata:
+{'canonical_url': 'https://dmeacademy.com/partners/', 'doc_id': '3906914231214746f1d22b930c0c57689458337dc74bbdca84f5721a63d3100a', 'entity_type': 'other'}
+{'canonical_url': 'https://dmeacademy.com/partners/', 'doc_id': '3906914231214746f1d22b930c0c57689458337dc74bbdca84f5721a63d3100a', 'entity_type': 'other'}
+
+Usage for natural language search:
+  poetry run python indexer/pinecone_doc_check.py --query 'your question here'

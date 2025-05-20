@@ -23,4 +23,4 @@ E           assert []
 tests/test_pinecone_needle.py:35: AssertionError
 =========================== short test summary info ============================
 FAILED tests/test_pinecone_needle.py::test_needle_queries - AssertionError: N...
-============================== 1 failed in 1.04s ===============================
+============================== 1 failed in 0.79s ===============================
