@@ -93,7 +93,11 @@ def quarantine_failure(doc: Dict[str, Any], reason: str, quarantine_bucket: str 
 
 def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None):
     url = raw.get("url")
-    html = raw.get("html", "")
+    # Extract text content robustly for WordPress and generic HTML
+    wp_content = None
+    if isinstance(raw.get("raw"), dict):
+        wp_content = raw["raw"].get("content", {}).get("rendered")
+    html = wp_content if wp_content else raw.get("html", "")
     canonical_url = url
     doc_id = sha256_of_url(canonical_url)
     text = clean_text(html)
