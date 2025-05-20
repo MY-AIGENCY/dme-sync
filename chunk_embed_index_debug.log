@@ -7,14 +7,36 @@ collected 0 items / 1 error
 
 ==================================== ERRORS ====================================
 _______________ ERROR collecting tests/test_chunk_embed_index.py _______________
-ImportError while importing test module '/Users/jenieflortraub/Code_Projects/dme-sync/tests/test_chunk_embed_index.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
 tests/test_chunk_embed_index.py:12: in <module>
     from indexer import chunk_embed_index as cei
-E   ModuleNotFoundError: No module named 'indexer'
+indexer/chunk_embed_index.py:46: in <module>
+    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+venv/lib/python3.13/site-packages/pinecone/deprecation_warnings.py:39: in init
+    raise AttributeError(msg)
+E   AttributeError: init is no longer a top-level attribute of the pinecone package.
+E   
+E   Please create an instance of the Pinecone class instead.
+E   
+E   Example:
+E   
+E       import os
+E       from pinecone import Pinecone, ServerlessSpec
+E   
+E       pc = Pinecone(
+E           api_key=os.environ.get("PINECONE_API_KEY")
+E       )
+E   
+E       # Now do stuff
+E       if 'my_index' not in pc.list_indexes().names():
+E           pc.create_index(
+E               name='my_index', 
+E               dimension=1536, 
+E               metric='euclidean',
+E               spec=ServerlessSpec(
+E                   cloud='aws',
+E                   region='us-west-2'
+E               )
+E           )
 ------------------------------- Captured stdout --------------------------------
 [DEBUG] Environment variables at test start:
 MallocNanoZone: 0
@@ -50,7 +72,7 @@ VSCODE_GIT_ASKPASS_NODE: ********
 VSCODE_GIT_ASKPASS_EXTRA_ARGS: 
 VSCODE_GIT_ASKPASS_MAIN: ********
 VSCODE_GIT_IPC_HANDLE: /var/folders/5k/pyn_mjr93qn0m3182ykjrwzm0000gn/T/vscode-git-694d63f473.sock
-SLACK_HOOK: <your-webhook-url> # optional
+SLACK_HOOK: <your-webhook-url>
 OPEN_AI_KEY: ********
 PINECONE_API_KEY: ********
 PINECONE_INDEX_NAME: dme-kb
@@ -70,9 +92,11 @@ ZDOTDIR: /Users/jenieflortraub
 USER_ZDOTDIR: /Users/jenieflortraub
 TERM: xterm-256color
 PS1: venv%n@%m %1~ %# 
+PYTHONPATH: .
 _: /Users/jenieflortraub/Code_Projects/dme-sync/venv/bin/poetry
 PYTEST_VERSION: 8.3.5
+OPENAI_API_KEY: ********
 =========================== short test summary info ============================
-ERROR tests/test_chunk_embed_index.py
+ERROR tests/test_chunk_embed_index.py - AttributeError: init is no longer a t...
 !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-=============================== 1 error in 0.05s ===============================
+=============================== 1 error in 0.32s ===============================

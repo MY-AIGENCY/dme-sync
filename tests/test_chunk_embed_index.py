@@ -1,5 +1,6 @@
+import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 print("[DEBUG] Environment variables at test start:")
 for k, v in os.environ.items():
     if 'KEY' in k or 'SECRET' in k or 'TOKEN' in k or 'PASS' in k:

@@ -18,6 +18,11 @@ from typing import List, Dict, Any
 from tqdm import tqdm
 import re
 from indexer.pinecone_utils import log_upsert_manifest_to_s3, get_pinecone_index_stats
+import time
+import random
+import boto3
+import json
+import sys
 
 # Load environment variables
 load_dotenv(override=True)
@@ -32,6 +37,11 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb")
 CHUNK_SECTION_TOKENS = int(os.getenv("CHUNK_SECTION_TOKENS", 512))
 CHUNK_PARAGRAPH_TOKENS = int(os.getenv("CHUNK_PARAGRAPH_TOKENS", 128))
 CHUNK_PARAGRAPH_OVERLAP = float(os.getenv("CHUNK_PARAGRAPH_OVERLAP", 0.2))
+CHECKPOINT_KEY = os.getenv("CHECKPOINT_KEY", "checkpoints/chunk_embed_checkpoint.json")
+DRY_RUN_LIMIT = int(os.getenv("DRY_RUN_LIMIT", 10))  # Set to 0 for full run
+BATCH_SIZE = 50
+THROTTLE_SEC = 1.0
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "dme-kb")  # Best practice: explicit namespace
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -114,19 +124,61 @@ def get_normalized_records(conn) -> List[Dict[str, Any]]:
             for r in rows
         ]
 
+s3 = boto3.client("s3")
+
+# Helper: Save checkpoint to S3
+def save_checkpoint(last_doc_idx):
+    checkpoint = {"last_doc_idx": last_doc_idx}
+    s3.put_object(Bucket=os.getenv("S3_BUCKET_NAME", "raw-site-data"), Key=CHECKPOINT_KEY, Body=json.dumps(checkpoint).encode("utf-8"))
+    logging.info(f"Checkpoint saved at doc idx {last_doc_idx}")
+
+# Helper: Load checkpoint from S3
+def load_checkpoint():
+    try:
+        resp = s3.get_object(Bucket=os.getenv("S3_BUCKET_NAME", "raw-site-data"), Key=CHECKPOINT_KEY)
+        checkpoint = json.loads(resp["Body"].read())
+        return checkpoint.get("last_doc_idx", 0)
+    except Exception:
+        return 0
+
+# Exponential backoff
+def backoff_sleep(attempt):
+    delay = min(60, (2 ** attempt) + random.uniform(0, 1))
+    logging.warning(f"Backing off for {delay:.1f} seconds...")
+    time.sleep(delay)
+
 def process_and_upsert():
-    logging.info("Starting chunk, embed, index pipeline...")
+    logging.info("=== ENVIRONMENT VARIABLES ===")
+    logging.info(f"S3_BUCKET_NAME={os.getenv('S3_BUCKET_NAME')}")
+    logging.info(f"POSTGRES_DSN={os.getenv('POSTGRES_DSN')}")
+    logging.info(f"DRY_RUN_LIMIT={DRY_RUN_LIMIT}")
+    logging.info(f"PINECONE_NAMESPACE={PINECONE_NAMESPACE}")
     pg_conn = psycopg2.connect(POSTGRES_DSN)
     records = get_normalized_records(pg_conn)
+    logging.info(f"Loaded {len(records)} records from Postgres.")
+    logging.info("First 5 canonical URLs:")
+    for r in records[:5]:
+        logging.info(f"  {r['canonical_url']}")
     pinecone_index = ensure_pinecone_index()
     batch = []
     total_upserted = 0
     get_pinecone_index_stats()  # Log stats before upserts
-    for doc in tqdm(records, desc="Processing docs"):
+    start_idx = load_checkpoint()
+    end_idx = start_idx + DRY_RUN_LIMIT if DRY_RUN_LIMIT > 0 else len(records)
+    logging.info(f"DRY_RUN_LIMIT={DRY_RUN_LIMIT}, processing records {start_idx} to {end_idx-1} (total: {end_idx-start_idx}) out of {len(records)} available.")
+    processed_docs = 0
+    for doc_idx, doc in enumerate(tqdm(records, desc="Processing docs")):
+        if doc_idx < start_idx:
+            continue
+        if DRY_RUN_LIMIT > 0 and doc_idx >= end_idx:
+            break
+        processed_docs += 1
         # Hierarchical chunking
         section_chunks = chunk_text(doc["text"], level="section")
+        logging.info(f"Doc {doc_idx} ({doc['canonical_url']}): {len(section_chunks)} section chunks.")
         for section in section_chunks:
             para_chunks = chunk_text(section, level="paragraph")
+            logging.info(f"  Section: {len(para_chunks)} paragraph chunks.")
             for para in para_chunks:
                 chunk_id = hashlib.sha256((doc["doc_id"] + para).encode()).hexdigest()
                 embedding = get_embedding(para)
@@ -140,26 +192,80 @@ def process_and_upsert():
                     "values": embedding,
                     "metadata": meta
                 })
-                if len(batch) >= 100:
-                    pinecone_index.upsert(vectors=batch)
-                    log_upsert_manifest_to_s3(batch)
-                    total_upserted += len(batch)
-                    logging.info(f"Upserted {total_upserted} vectors so far.")
-                    get_pinecone_index_stats()
+                logging.info(f"Batch size before upsert check: {len(batch)}")
+                if len(batch) >= BATCH_SIZE:
+                    # Throttle and upsert with retry
+                    for attempt in range(5):
+                        try:
+                            logging.info(f"[UPSERT] Attempting to upsert {len(batch)} vectors to Pinecone (namespace={PINECONE_NAMESPACE})...")
+                            response = pinecone_index.upsert(vectors=batch, namespace=PINECONE_NAMESPACE)
+                            logging.info(f"[UPSERT] Pinecone response: {response}")
+                            log_upsert_manifest_to_s3(batch)
+                            total_upserted += len(batch)
+                            logging.info(f"Upserted {total_upserted} vectors so far.")
+                            get_pinecone_index_stats()
+                            save_checkpoint(doc_idx)
+                            time.sleep(THROTTLE_SEC)
+                            break
+                        except Exception as e:
+                            logging.error(f"Error upserting batch: {e}")
+                            backoff_sleep(attempt)
                     batch = []
     if batch:
-        pinecone_index.upsert(vectors=batch)
-        log_upsert_manifest_to_s3(batch)
-        total_upserted += len(batch)
-        logging.info(f"Upserted {total_upserted} vectors total.")
-        get_pinecone_index_stats()
-    logging.info("Chunk, embed, index pipeline complete.")
+        for attempt in range(5):
+            try:
+                logging.info(f"[UPSERT] Attempting to upsert {len(batch)} vectors to Pinecone (namespace={PINECONE_NAMESPACE})...")
+                response = pinecone_index.upsert(vectors=batch, namespace=PINECONE_NAMESPACE)
+                logging.info(f"[UPSERT] Pinecone response: {response}")
+                log_upsert_manifest_to_s3(batch)
+                total_upserted += len(batch)
+                logging.info(f"Upserted {total_upserted} vectors total.")
+                get_pinecone_index_stats()
+                save_checkpoint(end_idx-1)
+                time.sleep(THROTTLE_SEC)
+                break
+            except Exception as e:
+                logging.error(f"Error upserting final batch: {e}")
+                backoff_sleep(attempt)
+    logging.info(f"Chunk, embed, index pipeline complete. Processed {processed_docs} docs in this run.")
     pg_conn.close()
+    if DRY_RUN_LIMIT > 0:
+        logging.info("DRY_RUN_LIMIT reached, exiting early for test.")
+        sys.exit(0)
 
 # TODO: Add Weaviate and local embedding support (modularize get_embedding and upsert)
 
 def main():
     process_and_upsert()
 
+def test_pinecone_hybrid_index():
+    from pinecone import Pinecone, ServerlessSpec
+    import os
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "llama-text-embed-v2")
+    SPARSE_MODEL = os.getenv("SPARSE_MODEL", "pinecone-sparse-english")
+    PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+    PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb-hybrid")
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    index_list = pc.list_indexes()
+    if PINECONE_INDEX_NAME not in index_list.names():
+        print(f"Creating hybrid index {PINECONE_INDEX_NAME}...")
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            metric="cosine",
+            dimension=1024,  # llama-text-embed-v2 default
+            embed_model=EMBEDDING_MODEL,
+            sparse_model=SPARSE_MODEL,
+            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        )
+        print(f"Created hybrid index {PINECONE_INDEX_NAME}.")
+    else:
+        print(f"Hybrid index {PINECONE_INDEX_NAME} already exists.")
+    index = pc.Index(PINECONE_INDEX_NAME)
+    print(f"Connected to hybrid index {PINECONE_INDEX_NAME}.")
+
 if __name__ == "__main__":
-    main() 
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "test-hybrid-index":
+        test_pinecone_hybrid_index()
+    else:
+        main() 
