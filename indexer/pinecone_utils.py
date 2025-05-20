@@ -31,8 +31,17 @@ def get_pinecone_index_stats():
     """Return Pinecone index stats (vector count, etc)."""
     index = pc.Index(PINECONE_INDEX_NAME)
     stats = index.describe_index_stats()
-    print(json.dumps(stats, indent=2))
-    return stats
+    # Try to convert to dict for serialization
+    if hasattr(stats, 'to_dict'):
+        stats_dict = stats.to_dict()
+        print(json.dumps(stats_dict, indent=2))
+        return stats_dict
+    elif isinstance(stats, dict):
+        print(json.dumps(stats, indent=2))
+        return stats
+    else:
+        print(stats)
+        return stats
 
 def log_upsert_manifest_to_s3(vectors):
     """Log upserted vector IDs and metadata to S3 as a manifest."""
