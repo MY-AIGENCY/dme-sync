@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.3, pytest-8.3.5, pluggy-1.6.0
+rootdir: /Users/jenieflortraub/Code_Projects/dme-sync
+configfile: pyproject.toml
+plugins: anyio-4.9.0
+collected 1 item
+
+tests/test_pinecone_needle.py F                                          [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_needle_queries ______________________________
+
+    def test_needle_queries():
+        for v in TEST_VECTORS:
+            start = time.time()
+            query_vec = v["values"]
+            result = index.query(vector=query_vec, top_k=1, include_metadata=True)
+            elapsed = time.time() - start
+>           assert result["matches"], f"No match for {v['id']}"
+E           AssertionError: No match for needle-1
+E           assert []
+
+tests/test_pinecone_needle.py:35: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pinecone_needle.py::test_needle_queries - AssertionError: N...
+============================== 1 failed in 1.04s ===============================

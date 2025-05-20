@@ -174,4 +174,5 @@ def main():
     logging.info(f"Normalization complete. Total processed: {count}")
 
 if __name__ == "__main__":
+    # Usage: poetry run python -m processor.normalize_and_canonicalize
     main() 

@@ -184,6 +184,10 @@ def sync_events():
         DB.commit()
 
 # ---------- run all ----------
+if __name__ == "__main__":
+    # Usage: poetry run python -m scraper.dme_sync
+    main()
+
 try:
     # Sync standard content types
     for kind, route in TABLES.items():

@@ -698,10 +698,5 @@ async def search_kb(
     }
 
 if __name__ == "__main__":
-    import uvicorn
-    
-    # Print warning if keys are missing
-    if missing_keys:
-        logging.warning(f"Running with limited functionality. Missing environment variables: {', '.join(missing_keys)}")
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    # Usage: poetry run python -m rag_api.main
+    main() 

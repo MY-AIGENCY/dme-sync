@@ -57,4 +57,6 @@ def test_process_and_upsert_runs(monkeypatch):
     fake_index = mock.MagicMock()
     monkeypatch.setattr(cei, "ensure_pinecone_index", lambda: fake_index)
     monkeypatch.setattr(cei, "psycopg2", mock.MagicMock())
-    cei.process_and_upsert()  # Should not raise 
+    with pytest.raises(SystemExit) as e:
+        cei.process_and_upsert()
+    assert e.value.code == 0 

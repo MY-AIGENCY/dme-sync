@@ -23,6 +23,7 @@ import random
 import boto3
 import json
 import sys
+from pinecone import Pinecone
 
 # Load environment variables
 load_dotenv(override=True)
@@ -39,7 +40,7 @@ CHUNK_PARAGRAPH_TOKENS = int(os.getenv("CHUNK_PARAGRAPH_TOKENS", 128))
 CHUNK_PARAGRAPH_OVERLAP = float(os.getenv("CHUNK_PARAGRAPH_OVERLAP", 0.2))
 CHECKPOINT_KEY = os.getenv("CHECKPOINT_KEY", "checkpoints/chunk_embed_checkpoint.json")
 DRY_RUN_LIMIT = int(os.getenv("DRY_RUN_LIMIT", 10))  # Set to 0 for full run
-BATCH_SIZE = 50
+BATCH_SIZE = 200
 THROTTLE_SEC = 1.0
 PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "dme-kb")  # Best practice: explicit namespace
 
@@ -56,7 +57,7 @@ if not PINECONE_API_KEY:
     raise ValueError("PINECONE_API_KEY environment variable is required")
 
 # Use the new Pinecone client API
-pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+pc = Pinecone(api_key=PINECONE_API_KEY, pool_threads=10)
 
 # Tokenizer (simple whitespace for now; TODO: use tiktoken or transformers for accurate count)
 def simple_tokenize(text: str) -> List[str]:
@@ -194,22 +195,25 @@ def process_and_upsert():
                 })
                 logging.info(f"Batch size before upsert check: {len(batch)}")
                 if len(batch) >= BATCH_SIZE:
-                    # Throttle and upsert with retry
+                    # Upsert with async and backoff
                     for attempt in range(5):
                         try:
                             logging.info(f"[UPSERT] Attempting to upsert {len(batch)} vectors to Pinecone (namespace={PINECONE_NAMESPACE})...")
-                            response = pinecone_index.upsert(vectors=batch, namespace=PINECONE_NAMESPACE)
-                            logging.info(f"[UPSERT] Pinecone response: {response}")
+                            response = pinecone_index.upsert(vectors=batch, namespace=PINECONE_NAMESPACE, async_req=True)
+                            # Wait for async result
+                            result = response.get()
+                            logging.info(f"[UPSERT] Pinecone response: {result}")
                             log_upsert_manifest_to_s3(batch)
                             total_upserted += len(batch)
-                            logging.info(f"Upserted {total_upserted} vectors so far.")
-                            get_pinecone_index_stats()
-                            save_checkpoint(doc_idx)
-                            time.sleep(THROTTLE_SEC)
                             break
                         except Exception as e:
-                            logging.error(f"Error upserting batch: {e}")
-                            backoff_sleep(attempt)
+                            if hasattr(e, 'status') and e.status == 429:
+                                wait = 2 ** attempt + random.uniform(0, 1)
+                                logging.warning(f"[UPSERT] Rate limited (429). Backing off {wait:.2f}s...")
+                                time.sleep(wait)
+                            else:
+                                logging.error(f"[UPSERT] Error: {e}")
+                                raise
                     batch = []
     if batch:
         for attempt in range(5):
@@ -264,8 +268,5 @@ def test_pinecone_hybrid_index():
     print(f"Connected to hybrid index {PINECONE_INDEX_NAME}.")
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "test-hybrid-index":
-        test_pinecone_hybrid_index()
-    else:
-        main() 
+    # Usage: poetry run python -m indexer.chunk_embed_index
+    main() 
