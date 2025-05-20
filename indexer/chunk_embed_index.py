@@ -17,6 +17,7 @@ import hashlib
 from typing import List, Dict, Any
 from tqdm import tqdm
 import re
+from indexer.pinecone_utils import log_upsert_manifest_to_s3, get_pinecone_index_stats
 
 # Load environment variables
 load_dotenv(override=True)
@@ -119,6 +120,8 @@ def process_and_upsert():
     records = get_normalized_records(pg_conn)
     pinecone_index = ensure_pinecone_index()
     batch = []
+    total_upserted = 0
+    get_pinecone_index_stats()  # Log stats before upserts
     for doc in tqdm(records, desc="Processing docs"):
         # Hierarchical chunking
         section_chunks = chunk_text(doc["text"], level="section")
@@ -139,9 +142,17 @@ def process_and_upsert():
                 })
                 if len(batch) >= 100:
                     pinecone_index.upsert(vectors=batch)
+                    log_upsert_manifest_to_s3(batch)
+                    total_upserted += len(batch)
+                    logging.info(f"Upserted {total_upserted} vectors so far.")
+                    get_pinecone_index_stats()
                     batch = []
     if batch:
         pinecone_index.upsert(vectors=batch)
+        log_upsert_manifest_to_s3(batch)
+        total_upserted += len(batch)
+        logging.info(f"Upserted {total_upserted} vectors total.")
+        get_pinecone_index_stats()
     logging.info("Chunk, embed, index pipeline complete.")
     pg_conn.close()
 
