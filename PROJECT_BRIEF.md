@@ -9,20 +9,19 @@ This repository implements a modular, production-grade Retrieval-Augmented Gener
 
 ### 1. Repository Structure
 - `scraper/`: Automated content discovery and ingestion (sitemap, WordPress API, or crawl).
-- `indexer/`: (Stubbed) For future normalization, chunking, and vector indexing.
-- `processor/`: (Stubbed) For future data processing and enrichment.
-- `rag_api/`: (Stubbed) For future API serving and retrieval.
-- `tests/`: (If populated) For automated testing.
+- `indexer/`: Normalization, chunking, and vector indexing (Section 4 complete and verified; 3200+ vectors in Pinecone).
+- `processor/`: Data processing and enrichment (Section 2 complete and verified).
+- `rag_api/`: API serving and retrieval (next steps: Section 5+).
+- `tests/`: Automated testing (core pipeline covered).
 - `legacy_build/`: Contains old/legacy files, not part of the current build.
 
 ### 2. Core Functionality
 - **Discovery & Capture (Section 1 Complete):**
-  - Attempts to fetch sitemap.xml; if unavailable, checks for WordPress REST API; if unavailable, falls back to respectful crawl.
-  - For WordPress, fetches all posts and pages as structured JSON.
-  - All discovered content is uploaded to S3 as individual JSON files.
-  - After each run, a manifest of all discovered items is uploaded to S3.
-  - A persistent run log (`run_history.jsonl`) is maintained in S3, recording date, method, item count, and manifest key.
-  - Change detection between runs is logged (new/removed items).
+  - Sitemap, WordPress API, or crawl; uploads raw JSON to S3; manifests and run logs maintained.
+- **Normalize & Canonicalize (Section 2 Complete):**
+  - Stable doc IDs, text cleaning, entity detection, JSONSchema validation, Postgres persistence, and S3 manifest.
+- **Chunk, Embed, Index (Section 4 Complete):**
+  - 499 docs processed, 3200+ vectors upserted to Pinecone (namespace: dme-kb), with audit manifests in S3. End-to-end pipeline execution verified.
 
 ### 3. Security & Best Practices
 - All secrets are removed from git history.
@@ -40,10 +39,10 @@ This repository implements a modular, production-grade Retrieval-Augmented Gener
 
 ## Next Steps for Development
 
-1. **Section 2: Normalize & Canonicalize**
-   - Implement normalization, canonical doc_id generation, text cleaning, entity detection, JSONSchema validation, and Postgres persistence as per `.DME-SYNC_DEV_RULES.md`.
+1. **Section 5: Retrieval Pipeline**
+   - Implement and test retrieval logic (BM25, embedding search, RRF fusion, metadata filtering).
 
-2. **Section 3+:**  
+2. **Section 6+:**  
    - Continue modular implementation of the RAG pipeline as described in the dev rules.
 
 3. **Testing & CI:**  
@@ -58,7 +57,7 @@ This repository implements a modular, production-grade Retrieval-Augmented Gener
 
 ## How to Resume
 
-- Review the latest manifest and run log in S3 for context on the most recent scrape.
+- Review the latest manifest and run log in S3 for context on the most recent scrape and upsert.
 - Use `.env.template` to configure your environment.
 - All code is on the branch: `rag-pipeline-upgrade/2025-05-18`.
 - Continue development per the modular sections in `.DME-SYNC_DEV_RULES.md`.
