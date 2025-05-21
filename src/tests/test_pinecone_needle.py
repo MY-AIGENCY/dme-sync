@@ -3,6 +3,7 @@ import time
 import pinecone
 import numpy as np
 import pytest
+from indexer.chunk_embed_index import get_embedding
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "dme-kb")

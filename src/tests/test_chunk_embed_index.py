@@ -9,7 +9,7 @@ for k, v in os.environ.items():
         print(f"{k}: {v}")
 import pytest
 from unittest import mock
-from src.indexer import chunk_embed_index as cei
+from indexer import chunk_embed_index as cei
 from indexer.chunk_embed_index import chunk_text
 
 @pytest.fixture

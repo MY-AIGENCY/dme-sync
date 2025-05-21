@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="480">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0 0,10 5,0 10" fill="#333"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; font-size: 14px; }
+      .box { fill:#f2f2f2; stroke:#333; stroke-width:1.5; }
+      .arrow { stroke:#333; stroke-width:1.5; fill:none; marker-end:url(#arrow); }
+    </style>
+  </defs>
+
+  <!-- Stage boxes -->
+  <g>
+    <rect class="box" x="40"  y="60" width="140" height="50" rx="6"/>
+    <text x="110" y="90" text-anchor="middle">Discovery</text>
+
+    <rect class="box" x="210" y="60" width="140" height="50" rx="6"/>
+    <text x="280" y="90" text-anchor="middle">Normalise</text>
+
+    <rect class="box" x="380" y="60" width="150" height="50" rx="6"/>
+    <text x="455" y="90" text-anchor="middle">Graph Build</text>
+
+    <rect class="box" x="560" y="60" width="140" height="50" rx="6"/>
+    <text x="630" y="90" text-anchor="middle">Embed / Index</text>
+
+    <rect class="box" x="730" y="60" width="140" height="50" rx="6"/>
+    <text x="800" y="90" text-anchor="middle">Retrieval</text>
+
+    <rect class="box" x="380" y="180" width="150" height="50" rx="6"/>
+    <text x="455" y="210" text-anchor="middle">Prompt &amp; LLM</text>
+
+    <rect class="box" x="380" y="300" width="150" height="50" rx="6"/>
+    <text x="455" y="330" text-anchor="middle">Feedback / Logs</text>
+
+    <rect class="box" x="730" y="300" width="140" height="50" rx="6"/>
+    <text x="800" y="330" text-anchor="middle">Security / PII</text>
+  </g>
+
+  <!-- Arrows -->
+  <g>
+    <!-- horizontal -->
+    <line class="arrow" x1="180" y1="85" x2="210" y2="85"/>
+    <line class="arrow" x1="350" y1="85" x2="380" y2="85"/>
+    <line class="arrow" x1="530" y1="85" x2="560" y2="85"/>
+    <line class="arrow" x1="700" y1="85" x2="730" y2="85"/>
+
+    <!-- vertical in centre -->
+    <line class="arrow" x1="455" y1="110" x2="455" y2="180"/>
+    <line class="arrow" x1="455" y1="230" x2="455" y2="300"/>
+
+    <!-- retrieval down -->
+    <line class="arrow" x1="800" y1="110" x2="800" y2="300"/>
+
+    <!-- prompt to security -->
+    <line class="arrow" x1="530" y1="205" x2="730" y2="205"/>
+  </g>
+</svg>

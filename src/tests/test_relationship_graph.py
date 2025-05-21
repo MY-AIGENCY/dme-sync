@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from src.indexer import relationship_graph as rg
+from indexer import relationship_graph as rg
 from neo4j.exceptions import ServiceUnavailable
 from unittest.mock import MagicMock
 

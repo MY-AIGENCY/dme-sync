@@ -15,7 +15,7 @@ import hashlib
 from fastapi.responses import JSONResponse
 
 # Import the rate limiter
-from src.legacy_build.rate_limit import rate_limit_middleware
+from legacy_build.rate_limit import rate_limit_middleware
 
 # Configure logging
 logging.basicConfig(

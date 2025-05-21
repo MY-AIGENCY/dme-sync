@@ -4,7 +4,7 @@ import shutil
 import tempfile
 import pytest
 from unittest import mock
-from src.processor import normalize_and_canonicalize as nc
+from processor import normalize_and_canonicalize as nc
 
 @pytest.fixture
 def sample_raw_page():

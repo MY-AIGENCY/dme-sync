@@ -1,24 +1,192 @@
 ============================= test session starts ==============================
-platform darwin -- Python 3.13.3, pytest-8.3.5, pluggy-1.6.0 -- /Users/jenieflortraub/Code_Projects/dme-sync/venv/bin/python3.13
+platform darwin -- Python 3.12.9, pytest-8.3.5, pluggy-1.6.0 -- /Users/dontraub/Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/bin/python
 cachedir: .pytest_cache
-rootdir: /Users/jenieflortraub/Code_Projects/dme-sync
+rootdir: /Users/dontraub/Code_Projects/dme-sync-new
 configfile: pyproject.toml
 plugins: anyio-4.9.0
-collecting ... collected 28 items / 1 error
+collecting ... collected 28 items
 
-==================================== ERRORS ====================================
-_______________ ERROR collecting src/tests/test_vapi_adapter.py ________________
-ImportError while importing test module '/Users/jenieflortraub/Code_Projects/dme-sync/src/tests/test_vapi_adapter.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-src/tests/test_vapi_adapter.py:13: in <module>
-    from src.rag_api.main import app
-src/rag_api/main.py:18: in <module>
-    from src.legacy_build.rate_limit import rate_limit_middleware
-E   ModuleNotFoundError: No module named 'src.legacy_build'
+src/tests/test_chunk_embed_index.py::test_chunk_text_section PASSED      [  3%]
+src/tests/test_chunk_embed_index.py::test_chunk_text_paragraph_overlap PASSED [  7%]
+src/tests/test_chunk_embed_index.py::test_get_embedding_returns_vector PASSED [ 10%]
+src/tests/test_chunk_embed_index.py::test_get_embedding_handles_error PASSED [ 14%]
+src/tests/test_chunk_embed_index.py::test_process_and_upsert_runs FAILED [ 17%]
+src/tests/test_chunk_embed_index.py::test_chunk_metadata_enrichment PASSED [ 21%]
+src/tests/test_dynamic_enrichment.py::test_extract_entities_and_relationships PASSED [ 25%]
+src/tests/test_normalize_and_canonicalize.py::test_sha256_of_url PASSED  [ 28%]
+src/tests/test_normalize_and_canonicalize.py::test_clean_text PASSED     [ 32%]
+src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_url PASSED [ 35%]
+src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_html PASSED [ 39%]
+src/tests/test_normalize_and_canonicalize.py::test_validate_schema_valid PASSED [ 42%]
+src/tests/test_normalize_and_canonicalize.py::test_validate_schema_invalid PASSED [ 46%]
+src/tests/test_normalize_and_canonicalize.py::test_quarantine_failure FAILED [ 50%]
+src/tests/test_normalize_and_canonicalize.py::test_persist_to_postgres PASSED [ 53%]
+src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_valid FAILED [ 57%]
+
+=================================== FAILURES ===================================
+_________________________ test_process_and_upsert_runs _________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x17e383350>
+
+    def test_process_and_upsert_runs(monkeypatch):
+        # Mock DB, Pinecone, and OpenAI
+        monkeypatch.setattr(cei, "get_normalized_records", lambda conn: [{
+            "doc_id": "abc",
+            "canonical_url": "url",
+            "entity_type": "type",
+            "text": "word " * 600,
+            "raw": {}
+        }])
+        monkeypatch.setattr(cei, "get_embedding", lambda text, model=None: [0.1] * cei.EMBEDDING_DIMENSION)
+        fake_index = mock.MagicMock()
+        monkeypatch.setattr(cei, "ensure_pinecone_index", lambda: fake_index)
+        monkeypatch.setattr(cei, "psycopg2", mock.MagicMock())
+        with pytest.raises(SystemExit) as e:
+>           cei.process_and_upsert()
+
+src/tests/test_chunk_embed_index.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = None
+
+    def process_and_upsert(args=None):
+        logging.info("=== ENVIRONMENT VARIABLES ===")
+        logging.info(f"S3_BUCKET_NAME={os.getenv('S3_BUCKET_NAME')}")
+        logging.info(f"POSTGRES_DSN={os.getenv('POSTGRES_DSN')}")
+        logging.info(f"DRY_RUN_LIMIT={DRY_RUN_LIMIT}")
+        logging.info(f"PINECONE_NAMESPACE={PINECONE_NAMESPACE}")
+        pg_conn = psycopg2.connect(POSTGRES_DSN)
+        records = get_normalized_records(pg_conn)
+        targeted = False
+        if args and args.canonical_urls:
+            targeted = True
+            if args.canonical_urls.startswith('@'):
+                with open(args.canonical_urls[1:], 'r') as f:
+                    url_set = set(line.strip() for line in f if line.strip())
+            else:
+                url_set = set(u.strip() for u in args.canonical_urls.split(','))
+            records = [r for r in records if r['canonical_url'] in url_set]
+        logging.info(f"Loaded {len(records)} records from Postgres.")
+        logging.info("First 5 canonical URLs:")
+        for r in records[:5]:
+            logging.info(f"  {r['canonical_url']}")
+>       pinecone_index = ensure_pinecone_index(test_mode=TEST_MODE)
+E       TypeError: test_process_and_upsert_runs.<locals>.<lambda>() got an unexpected keyword argument 'test_mode'
+
+src/indexer/chunk_embed_index.py:178: TypeError
+___________________________ test_quarantine_failure ____________________________
+
+tmp_path = PosixPath('/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0')
+sample_raw_page = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
+
+    def test_quarantine_failure(tmp_path, sample_raw_page):
+        doc = {
+            "doc_id": "abc",
+            "canonical_url": sample_raw_page["url"],
+            "entity_type": "program",
+            "text": "Program info",
+            "raw": sample_raw_page,
+        }
+        reason = "schema error"
+        quarantine_dir = tmp_path / "quarantine"
+>       nc.quarantine_failure(doc, reason, str(quarantine_dir))
+
+src/tests/test_normalize_and_canonicalize.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/processor/normalize_and_canonicalize.py:118: in quarantine_failure
+    s3.put_object(Bucket=quarantine_bucket, Key=key, Body=json.dumps({"doc": doc, "reason": reason}, indent=2).encode('utf-8'))
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:595: in _api_call
+    return self._make_api_call(operation_name, kwargs)
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/context.py:123: in wrapper
+    return func(*args, **kwargs)
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:999: in _make_api_call
+    api_params = self._emit_api_params(
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:1118: in _emit_api_params
+    self.meta.events.emit(
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:412: in emit
+    return self._emitter.emit(aliased_event_name, **kwargs)
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:256: in emit
+    return self._emit(event_name, kwargs)
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:239: in _emit
+    response = handler(**kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+params = {'Body': <_io.BytesIO object at 0x17f102b60>, 'Bucket': '/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine', 'Key': 'quarantine/abc.json'}
+kwargs = {'context': {'auth_type': None, 'client_config': <botocore.config.Config object at 0x17ce61190>, 'client_region': 'us-...aming_input': True, ...}, 'event_name': 'before-parameter-build.s3.PutObject', 'model': OperationModel(name=PutObject)}
+bucket = '/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine'
+error_msg = 'Invalid bucket name "/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quaran...rn:(aws).*:s3-outposts:[a-z\\-0-9]+:[0-9]{12}:outpost[/:][a-zA-Z0-9\\-]{1,63}[/:]accesspoint[/:][a-zA-Z0-9\\-]{1,63}$"'
+
+    def validate_bucket_name(params, **kwargs):
+        if 'Bucket' not in params:
+            return
+        bucket = params['Bucket']
+        if not VALID_BUCKET.search(bucket) and not VALID_S3_ARN.search(bucket):
+            error_msg = (
+                f'Invalid bucket name "{bucket}": Bucket name must match '
+                f'the regex "{VALID_BUCKET.pattern}" or be an ARN matching '
+                f'the regex "{VALID_S3_ARN.pattern}"'
+            )
+>           raise ParamValidationError(report=error_msg)
+E           botocore.exceptions.ParamValidationError: Parameter validation failed:
+E           Invalid bucket name "/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine": Bucket name must match the regex "^[a-zA-Z0-9.\-_]{1,255}$" or be an ARN matching the regex "^arn:(aws).*:(s3|s3-object-lambda):[a-z\-0-9]*:[0-9]{12}:accesspoint[/:][a-zA-Z0-9\-.]{1,63}$|^arn:(aws).*:s3-outposts:[a-z\-0-9]+:[0-9]{12}:outpost[/:][a-zA-Z0-9\-]{1,63}[/:]accesspoint[/:][a-zA-Z0-9\-]{1,63}$"
+
+../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/handlers.py:299: ParamValidationError
+_________________________ test_process_raw_page_valid __________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x17f1848f0>
+sample_raw_page = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
+
+    def test_process_raw_page_valid(monkeypatch, sample_raw_page):
+        doc_id = nc.sha256_of_url(sample_raw_page["url"])
+        calls = {}
+        def fake_persist(doc, conn):
+            calls["persisted"] = doc["doc_id"]
+        monkeypatch.setattr(nc, "persist_to_postgres", fake_persist)
+        monkeypatch.setattr(nc, "validate_schema", lambda doc: None)
+>       nc.process_raw_page(sample_raw_page, mock.MagicMock())
+
+src/tests/test_normalize_and_canonicalize.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+raw = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
+conn = <MagicMock id='6427265312'>, quarantine_bucket = None, schema = None
+test_mode = False
+
+    def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None, schema=None, test_mode=False):
+        url = raw.get("url")
+        # Extract text content robustly for WordPress and generic HTML
+        wp_content = None
+        if isinstance(raw.get("raw"), dict):
+            wp_content = raw["raw"].get("content", {}).get("rendered")
+        html = wp_content if wp_content else raw.get("html", "")
+        canonical_url = url
+        doc_id = sha256_of_url(canonical_url)
+        text = clean_text(html)
+        entity_type = detect_entity_type(canonical_url, html)
+        # --- New: Enrichment ---
+        enrichment = extract_entities_and_relationships({"text": text}, schema or {})
+        doc = {
+            "doc_id": doc_id,
+            "canonical_url": canonical_url,
+            "entity_type": entity_type,
+            "text": text,
+            "raw": raw,
+            # New enrichment fields
+            "entities": enrichment.get("entities", []),
+            "relationships": enrichment.get("relationships", []),
+            "metadata": enrichment.get("metadata", {}),
+        }
+        validation_error = validate_schema(doc)
+        if validation_error:
+            quarantine_failure(doc, validation_error, quarantine_bucket)
+        else:
+>           persist_to_postgres(doc, conn, test_mode=test_mode)
+E           TypeError: test_process_raw_page_valid.<locals>.fake_persist() got an unexpected keyword argument 'test_mode'
+
+src/processor/normalize_and_canonicalize.py:149: TypeError
 =========================== short test summary info ============================
-ERROR src/tests/test_vapi_adapter.py
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-=============================== 1 error in 1.72s ===============================
+FAILED src/tests/test_chunk_embed_index.py::test_process_and_upsert_runs - Ty...
+FAILED src/tests/test_normalize_and_canonicalize.py::test_quarantine_failure
+FAILED src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_valid
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 3 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========================= 3 failed, 13 passed in 8.69s =========================

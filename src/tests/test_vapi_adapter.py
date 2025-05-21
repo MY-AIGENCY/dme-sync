@@ -10,7 +10,8 @@ load_dotenv()
 sys.path.append('..')  # Add the parent directory to the path
 
 # Import the application
-from src.rag_api.main import app
+from rag_api.main import app
+from rag_api.vapi_adapter import VapiAdapter
 
 class TestVapiAdapter(unittest.TestCase):
     """Test the new Vapi Server-Events adapter"""
