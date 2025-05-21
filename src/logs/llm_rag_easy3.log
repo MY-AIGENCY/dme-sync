@@ -1,0 +1,13 @@
+
+[INFO] Query: List all academic programs available at DME Academy.
+[INFO] Retrieving top 5 context chunks from Pinecone...
+[INFO] Retrieved 5 context chunks.
+[INFO] Calling OpenAI LLM for synthesis...
+
+===== Synthesized Answer =====
+
+I'm sorry, but the context provided does not include information about the academic programs available at DME Academy. Please provide more specific details or context, and I'll be happy to assist you.
+
+===== Context Used =====
+
+

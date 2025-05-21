@@ -1,0 +1,31 @@
+{
+  "namespaces": {
+    "<your-pinecone-namespace>": {
+      "vector_count": 821
+    },
+    "dme-kb": {
+      "vector_count": 40
+    }
+  },
+  "index_fullness": 0.0,
+  "total_vector_count": 861,
+  "dimension": 1536,
+  "metric": "cosine",
+  "vector_type": "dense"
+}
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170031.jsonl
+{
+  "namespaces": {
+    "<your-pinecone-namespace>": {
+      "vector_count": 821
+    },
+    "dme-kb": {
+      "vector_count": 40
+    }
+  },
+  "index_fullness": 0.0,
+  "total_vector_count": 861,
+  "dimension": 1536,
+  "metric": "cosine",
+  "vector_type": "dense"
+}

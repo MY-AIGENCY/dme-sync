@@ -1,0 +1,35 @@
+Listing objects in bucket: raw-site-data
+Found 658 objects. Showing up to 10:
+- manifests/pinecone_upsert_20250520_005738.jsonl (LastModified: 2025-05-20 00:57:39+00:00)
+- manifests/pinecone_upsert_20250520_005807.jsonl (LastModified: 2025-05-20 00:58:08+00:00)
+- manifests/pinecone_upsert_20250520_005843.jsonl (LastModified: 2025-05-20 00:58:44+00:00)
+- manifests/pinecone_upsert_20250520_005915.jsonl (LastModified: 2025-05-20 00:59:16+00:00)
+- manifests/pinecone_upsert_20250520_005946.jsonl (LastModified: 2025-05-20 00:59:47+00:00)
+- manifests/pinecone_upsert_20250520_010040.jsonl (LastModified: 2025-05-20 01:00:42+00:00)
+- manifests/pinecone_upsert_20250520_010112.jsonl (LastModified: 2025-05-20 01:01:13+00:00)
+- manifests/pinecone_upsert_20250520_010140.jsonl (LastModified: 2025-05-20 01:01:41+00:00)
+- manifests/pinecone_upsert_20250520_010209.jsonl (LastModified: 2025-05-20 01:02:10+00:00)
+- manifests/pinecone_upsert_20250520_010240.jsonl (LastModified: 2025-05-20 01:02:41+00:00)
+
+Inspecting first file: manifests/pinecone_upsert_20250520_005738.jsonl
+First 20 lines:
+{"id": "86acdc10ae15e1c135b8186815b69ff808ee5be280c3cf86c5c389686affb4cf", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "1bcfbaf4dc1dfbc11d1440278a44fc9e3c5d125a8a451ca4cae410fc52029453", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "edb1553d1daf686e47ce1e80943e7e10c292f2f3cfd04825af4c1530be5c6288", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "18f7d449a0f94daba20e647b9987b7e9a9554965583d0b3364f77d29d0f86a7f", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "6152dcc2a70f2f3f2b89039ddcdda99832b4e50358728f06828502bff08b68be", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "e1214f6f30e3e8bd1bdc1483c05dc32ac53592d17097979d8c31748fb995978a", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "844e1df4830a39996656e80dc03bce3dcbfde239a42b3e254fbf7bf606544954", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "8ee1795457ebbeae05779ee73a4f8ae8e17c523e618e0e2c9e3adf9469e5d5f6", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "8f445247ede02eee72beffd109b610aec5bc10b65bdaf6c46ce23e79519c7906", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "c5376ba638e0c51c7f386e5f1196f54981c38fd49a484f2bef2c34a6d50757ae", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "b7c4c72d8b1e19a43d40d9f4206a08b1ef30efae542d835642cc2f17970db7f5", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "4cf433cd5940970b31dd6634c242a0a304d5090d0363c5b8e74647489f2e9a60", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "d9b6a2357229541afe186927d236811b7ea579e441cd0e91df8a379e0d742172", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "b3910b47770ff3c419840e0f3647a84b4043ce9e730c3b6bb3b8e896eb10d0d1", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "9acc25f73688d16194011a43ff44288b15fff23eb01307f3ac7251bce5ea1be0", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "129fef0f3e3366f4eb25525e6348e4ebd65e812052b7490f435f6a067fd559de", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "f95851b1908f8dc8c362e8a2d2c4e7653952bed28d72cedbbcd40922d684551e", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "0789331be301c455b04fb8b9291c8e551c52414e0801ba68856dbee0a94614f7", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "cb334d0988da68c2e371d6410c737fee5afe756b60a63532c77848e1ba4e4070", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}
+{"id": "b687c7b25fdfdca269d8712b1d4e1248cde3129167e4e7ba702af8b29cbb0151", "metadata": {"doc_id": "190425c66d41c547b58aebfea4d958bda94efb7c18c7891c630be4943eaee371", "canonical_url": "https://www.gov.uk/sitemaps/sitemap_2.xml", "entity_type": "other"}, "timestamp": "20250520_005738"}

@@ -1,0 +1,47 @@
+{
+  "namespaces": {
+    "dme-kb": {
+      "vector_count": 40
+    },
+    "<your-pinecone-namespace>": {
+      "vector_count": 821
+    }
+  },
+  "index_fullness": 0.0,
+  "total_vector_count": 861,
+  "dimension": 1536,
+  "metric": "cosine",
+  "vector_type": "dense"
+}
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170350.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170445.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170544.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170723.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170827.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_170929.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171027.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171128.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171234.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171340.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171438.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171532.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171643.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_171741.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_172425.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_172530.jsonl
+Logged upsert manifest to S3: manifests/pinecone_upsert_20250520_172538.jsonl
+{
+  "namespaces": {
+    "dme-kb": {
+      "vector_count": 3237
+    },
+    "<your-pinecone-namespace>": {
+      "vector_count": 821
+    }
+  },
+  "index_fullness": 0.0,
+  "total_vector_count": 4058,
+  "dimension": 1536,
+  "metric": "cosine",
+  "vector_type": "dense"
+}

@@ -1,0 +1,13 @@
+
+[INFO] Query: Who is the head coach of the boys basketball program?
+[INFO] Retrieving top 5 context chunks from Pinecone...
+[INFO] Retrieved 5 context chunks.
+[INFO] Calling OpenAI LLM for synthesis...
+
+===== Synthesized Answer =====
+
+The head coach of the boys basketball program at DME Academy is Wesam Al-Sous. [Source](https://dmeacademy.com/our-team/)
+
+===== Context Used =====
+
+

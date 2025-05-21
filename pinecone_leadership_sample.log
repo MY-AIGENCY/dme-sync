@@ -1,6 +1,0 @@
-
-Checking Pinecone for canonical_url: https://dmeacademy.com/leadership-team/
-Found 0 vectors for https://dmeacademy.com/leadership-team/
-
-Usage for natural language search:
-  poetry run python indexer/pinecone_doc_check.py --query 'your question here'

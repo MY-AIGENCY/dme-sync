@@ -54,7 +54,6 @@ FastAPI service with endpoints:
   - OpenAI (required for embeddings)
   - Pinecone (required for vector storage)
   - Typesense (optional for text search)
-- Docker (for containerized deployment)
 
 ### Installation
 
@@ -119,14 +118,6 @@ FastAPI service with endpoints:
    uvicorn main:app --reload
    ```
 
-### Using Docker
-
-Build and run the Docker container:
-```
-docker build -t dme-kb .
-docker run -p 8000:8000 --env-file .env dme-kb
-```
-
 ### GitHub Actions Automation
 
 The repository includes two GitHub Action workflows:
@@ -183,4 +174,12 @@ The search API is designed to work with Vapi.ai. Configure your Vapi.ai function
 - [ ] What was completed:
 - [ ] What remains:
 - [ ] Any blockers or questions:
+
+## Documentation
+
+- See `docs/schema_v1.md` for schema definitions
+- See `docs/architecture.svg` for data flow
+- See `docs/oncall.md` for runbook
+- See `BACKLOG.md` for future tasks
+- See `CONTRIBUTING.md` for contribution guidelines
 

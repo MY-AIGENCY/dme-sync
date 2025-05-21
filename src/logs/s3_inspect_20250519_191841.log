@@ -1,0 +1,35 @@
+Listing objects in bucket: raw-site-data
+Found 536 objects. Showing up to 10:
+- manifests/wordpress_manifest_20250518T180512Z.json (LastModified: 2025-05-18 18:05:14+00:00)
+- manifests/wordpress_manifest_20250518T180640Z.json (LastModified: 2025-05-18 18:06:41+00:00)
+- manifests/wordpress_manifest_20250518T182257Z.json (LastModified: 2025-05-18 18:22:58+00:00)
+- raw/011a7fef693b640e0a8afe05cd4e192060a0b68dccf451b78797da9fa3ad2638.json (LastModified: 2025-05-18 17:25:29+00:00)
+- raw/015e3cc42af0671a8b180f48c84ec750fd7f32d0e92da391de57a7b662c7526f.json (LastModified: 2025-05-18 17:26:41+00:00)
+- raw/02085c8ed4799fb36baef045635ee1c0f549836c7d51492fd4754da9968e7084.json (LastModified: 2025-05-18 17:26:46+00:00)
+- raw/0f32c430fc4ecaf1b7a0eff0566350ca8e65d5e9a8bf2a715bcb5e0b6a2a6678.json (LastModified: 2025-05-18 17:27:24+00:00)
+- raw/0f41d46226bec173549d61164147e9c305eec847929741d94958ef951bcd2d66.json (LastModified: 2025-05-18 17:25:46+00:00)
+- raw/125c74064dca6fb943bd6775be6b621c3fce7f62d7e49123a385c98947f843a7.json (LastModified: 2025-05-18 17:26:57+00:00)
+- raw/18fa26f0f29766bddf05b12109b18f6bdfb38744cf02cd72013b29448f850156.json (LastModified: 2025-05-18 17:26:52+00:00)
+
+Inspecting first file: manifests/wordpress_manifest_20250518T180512Z.json
+First 20 lines:
+{
+  "type": "wordpress",
+  "count": 500,
+  "items": [
+    "https://dmeacademy.com/dme-academy-hosts-basketball-showcase-in-dubai/",
+    "https://dmeacademy.com/sports-summer-prep-2025/",
+    "https://dmeacademy.com/former-dme-midfielder-earns-starts-in-spains-la-liga/",
+    "https://dmeacademy.com/private-school-in-daytona-florida-dme-academy-middle-school/",
+    "https://dmeacademy.com/dme-academy-athletes-make-a-difference-in-daytona/",
+    "https://dmeacademy.com/florida-junior-golf-tournament-charles-ballard-finishes-2nd/",
+    "https://dmeacademy.com/asya-lara-barnes-commits-to-towson-university/",
+    "https://dmeacademy.com/mls-next-charles-dodzi-signs-with-tacoma-defiance/",
+    "https://dmeacademy.com/florida-high-school-baseball-dme-academy-midseason-update/",
+    "https://dmeacademy.com/mikel-brown-represents-dme-academy-at-mcdonalds-all-american-game/",
+    "https://dmeacademy.com/yan-diomande-makes-la-liga-debut-against-real-madrid/",
+    "https://dmeacademy.com/jva-watch-list-6-dme-athletes-named-to-2025/",
+    "https://dmeacademy.com/12-dme-alumni-headed-to-ncaa-tourney/",
+    "https://dmeacademy.com/dme-academy-performance-program/",
+    "https://dmeacademy.com/dme-academy-students-experience-stem-at-seaworld-orlando/",
+    "https://dmeacademy.com/dme-academys-samantha-reagan-rises-in-the-crossfit-open/",

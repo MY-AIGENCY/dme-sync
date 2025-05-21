@@ -1,0 +1,29 @@
+
+[INFO] Query: What sports programs are offered at DME Academy?
+[INFO] Retrieving top 5 context chunks from Pinecone...
+[INFO] Retrieved 5 context chunks.
+[INFO] Calling OpenAI LLM for synthesis...
+
+===== Synthesized Answer =====
+
+DME Academy offers the following sports programs:
+
+1. Basketball
+2. Soccer
+3. Volleyball
+4. Baseball
+5. Softball
+6. Football
+7. Tennis
+8. Track & Field
+9. Esports
+10. Cheerleading
+11. Golf
+12. Lacrosse
+13. Ice Hockey
+
+For more information, you can visit their official website at [dmeacademy.com](https://dmeacademy.com/).
+
+===== Context Used =====
+
+
