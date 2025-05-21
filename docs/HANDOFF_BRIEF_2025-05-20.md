@@ -1,5 +1,11 @@
-
 # Voice‑Agent Knowledge Base — Handoff Brief (2025-05-20)
+
+> **Execution Protocol: Cloud-Only, Runner-Based**
+>
+> - All development, testing, and execution must occur in cloud runners (e.g., GitHub Actions, Codespaces, or cloud VMs). No local or Docker-based execution is permitted.
+> - Environment variables and secrets are always injected by the runner (via secret store or runtime `.env`), never committed to the repo.
+> - All scripts and services load environment variables at runtime using `load_dotenv()` or the runner's environment.
+> - For full details, see `.DME-SYNC_DEV_RULES.md` and `CLOUD_ONLY_DEVELOPMENT.md`.
 
 This brief accelerates onboarding for a **new AI developer** taking over the voice‑agent knowledge‑base project.
 
@@ -9,21 +15,21 @@ This brief accelerates onboarding for a **new AI developer** taking over the voi
 
 | Aspect | Status |
 |--------|--------|
-| **Purpose** | Voice agent that answers company questions via LLM → TTS |
+| **Purpose** | Voice agent that answers company questions via LLM → TTS |
 | **Strengths** | End‑to‑end pipeline for data ingestion, chunking, embedding, and Pinecone indexing is operational |
 | **Weak Link** | Retrieved answers lack precision; needs semantic relationship modeling & metadata enrichment |
 | **Current Branch** | `rag-pipeline-upgrade/2025-05-18` |
-| **Tech Stack** | Python 3.11 · Poetry · Docker Compose · AWS S3 · Postgres · Neo4j · Pinecone · GitHub Actions |
+| **Tech Stack** | Python 3.11 · Poetry · Docker Compose · AWS S3 · Postgres · Neo4j · Pinecone · GitHub Actions |
 
 ---
 
 ## 2 · Recent History
 
-- **Discovery & Capture**: sitemap / API crawler uploads raw content to S3.  
-- **Normalize & Canonicalize**: cleans text, assigns `doc_id`, stores in Postgres (Section 2 completed).  
-- **Chunk → Embed → Index**: creates hierarchical chunks, embeds via OpenAI, upserts to Pinecone (dry‑run validated; full scale pending).  
+- **Discovery & Capture**: sitemap / API crawler uploads raw content to S3.  
+- **Normalize & Canonicalize**: cleans text, assigns `doc_id`, stores in Postgres (Section 2 completed).  
+- **Chunk → Embed → Index**: creates hierarchical chunks, embeds via OpenAI, upserts to Pinecone (dry‑run validated; full scale pending).  
 - **Pinecone blocker**: resolved by upgrading client & adding `__init__.py` packages.  
-- **Dev Rules**: rigorous, test‑driven workflow established.citeturn3file1
+- **Dev Rules**: rigorous, test‑driven workflow established.
 
 ---
 
@@ -32,7 +38,7 @@ This brief accelerates onboarding for a **new AI developer** taking over the voi
 The pipeline lacks a **semantic‑relationship & metadata‑enrichment** layer:
 
 1. Entity extraction & typing.  
-2. Relationship graph (e.g., staff → program, FAQ → topic).  
+2. Relationship graph (e.g., staff → program, FAQ → topic).  
 3. Rich metadata (dates, tags, source reliability) for filtered retrieval.  
 4. Re‑ranking that fuses vector + graph proximity.
 
@@ -51,16 +57,16 @@ Essential context (verbatim):
 """
 • Current pipeline: ingest → chunk → embed → index → store in Pinecone → retrieve → summarize → TTS.  
 • Weak link: retrieved answers lack relevance/coverage; likely missing deep relationship modeling & rich metadata.  
-• Goal: auto‑generate an “optimized knowledge base” from any data source whose records can be queried with near‑100 % accuracy and minimal latency.  
+• Goal: auto‑generate an "optimized knowledge base" from any data source whose records can be queried with near‑100 % accuracy and minimal latency.  
 • You may propose code, off‑the‑shelf tools, or hybrid approaches.
 """
 
 Output constraints
-- Format: numbered steps (≤ 12), each with **Action**, **Why**, **Tool/Code Hint**.
-- Include specific libraries/services (Python preferred) and schema examples where helpful (≤ 15 lines of code each).
+- Format: numbered steps (≤ 12), each with **Action**, **Why**, **Tool/Code Hint**.
+- Include specific libraries/services (Python preferred) and schema examples where helpful (≤ 15 lines of code each).
 - Cover: entity extraction, ontology/graph building, metadata generation, re‑indexing, evaluation metrics.
 - Tone: direct, engineering‑focused, no fluff.
-- Length: ≤ 450 words.
+- Length: ≤ 450 words.
 
 ```
 
@@ -68,7 +74,7 @@ Output constraints
 
 ## 5 · Handoff Checklist (filled)
 
-- **What was completed**: Sections 1‑2 fully implemented; Pinecone integration fixed; dev rules & tests consolidated.  
+- **What was completed**: Sections 1‑2 fully implemented; Pinecone integration fixed; dev rules & tests consolidated.  
 - **What remains**: Graph/metadata enrichment, retrieval re‑rank, final evaluation dashboard.  
 - **Blockers / questions**: None; awaiting enrichment plan & execution.
 

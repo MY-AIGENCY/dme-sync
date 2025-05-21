@@ -1,9 +1,21 @@
 # Project Backlog
 
+> **For real-time project status, see [CURRENT_STATUS.md](./CURRENT_STATUS.md)**
+
 This document tracks future development tasks, improvements, and technical debt for the DME Knowledge Base Pipeline.
 
 ## Open Tasks
 
+- [ ] Entity Extraction: Integrate NER (e.g., spaCy) into normalization ([docs](./docs/HANDOFF_BRIEF_2025-05-20.md))
+- [ ] Entity Typing/Linking: Add canonical typing and optional Wikidata linking
+- [ ] Relationship Extraction: Add OpenIE or dependency parsing for triples
+- [ ] Ontology/Graph Schema: Define and document minimal ontology ([docs/schema_v1.md](./docs/schema_v1.md))
+- [ ] Graph Construction: Upsert nodes/edges into Neo4j
+- [ ] Metadata Enrichment: Attach metadata to chunks
+- [ ] Re-index: Re-chunk, re-embed, and upsert with new metadata
+- [ ] Hybrid Retrieval: Fuse vector and graph search
+- [ ] Re-ranking: Implement metadata and graph-based re-ranking
+- [ ] Evaluation: Add precision/recall/latency metrics and feedback logging
 - [ ] Add checkpointing and resumable processing to normalization/canonicalization pipeline
 - [ ] Incremental manifest writing for long-running jobs
 - [ ] Complete docs/oncall.md with full incident response runbook

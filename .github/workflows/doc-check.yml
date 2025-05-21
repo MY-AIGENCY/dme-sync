@@ -1,0 +1,21 @@
+name: Documentation Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - '**.py'
+      - '**.md'
+
+jobs:
+  doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for doc updates
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git diff --name-only origin/${{ github.base_ref }} > changed_files.txt
+          if grep -qE 'src/|\.py' changed_files.txt && ! grep -qE 'README.md|BACKLOG.md|CURRENT_STATUS.md|\.DME-SYNC_DEV_RULES.md|CONTRIBUTING.md' changed_files.txt; then
+            echo "ERROR: Code changes detected without documentation/status updates. Please update relevant docs, BACKLOG.md, and CURRENT_STATUS.md." && exit 1
+          fi 

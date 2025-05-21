@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: doc-update-check
+        name: Doc Update Check
+        entry: bash scripts/check_doc_update.sh
+        language: system
+        types: [python] 
