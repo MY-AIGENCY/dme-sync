@@ -11,6 +11,8 @@ import boto3
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 import argparse
+from .schema_inference import infer_schema_from_samples
+from .dynamic_enrichment import extract_entities_and_relationships
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +37,10 @@ ENTITY_PATTERNS = {
     "staff": re.compile(r"/staff|/coach|/faculty", re.I),
     "program": re.compile(r"/program|/course|/curriculum", re.I),
 }
+
+# Support test mode for isolated test table
+TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
+TEST_KB_DOCS_TABLE = os.getenv("TEST_KB_DOCS_TABLE", "kb_docs_test")
 
 def sha256_of_url(url: str) -> str:
     return hashlib.sha256(url.encode("utf-8")).hexdigest()
@@ -62,19 +68,38 @@ def validate_schema(doc: Dict[str, Any]) -> Optional[str]:
     except ValidationError as e:
         return str(e)
 
-def persist_to_postgres(doc: Dict[str, Any], conn):
+def persist_to_postgres(doc: Dict[str, Any], conn, test_mode=False):
+    table = TEST_KB_DOCS_TABLE if test_mode else "kb_docs"
     with conn.cursor() as cur:
         cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {table} (
+                doc_id TEXT PRIMARY KEY,
+                canonical_url TEXT,
+                entity_type TEXT,
+                text TEXT,
+                raw JSONB,
+                entities JSONB,
+                relationships JSONB,
+                metadata JSONB
+            );
             """
-            INSERT INTO kb_docs (doc_id, canonical_url, entity_type, text, raw)
-            VALUES (%s, %s, %s, %s, %s)
+        )
+        cur.execute(
+            f"""
+            INSERT INTO {table} (doc_id, canonical_url, entity_type, text, raw, entities, relationships, metadata)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (doc_id) DO UPDATE SET
                 canonical_url=EXCLUDED.canonical_url,
                 entity_type=EXCLUDED.entity_type,
                 text=EXCLUDED.text,
-                raw=EXCLUDED.raw;
+                raw=EXCLUDED.raw,
+                entities=EXCLUDED.entities,
+                relationships=EXCLUDED.relationships,
+                metadata=EXCLUDED.metadata;
             """,
-            [doc["doc_id"], doc["canonical_url"], doc["entity_type"], doc["text"], json.dumps(doc["raw"])]
+            [doc["doc_id"], doc["canonical_url"], doc["entity_type"], doc["text"], json.dumps(doc["raw"]),
+             json.dumps(doc.get("entities", [])), json.dumps(doc.get("relationships", [])), json.dumps(doc.get("metadata", {}))]
         )
     conn.commit()
 
@@ -93,7 +118,7 @@ def quarantine_failure(doc: Dict[str, Any], reason: str, quarantine_bucket: str 
     s3.put_object(Bucket=quarantine_bucket, Key=key, Body=json.dumps({"doc": doc, "reason": reason}, indent=2).encode('utf-8'))
     logging.warning(f"Document {doc_id} quarantined to S3 bucket {quarantine_bucket}: {reason}")
 
-def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None):
+def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None, schema=None, test_mode=False):
     url = raw.get("url")
     # Extract text content robustly for WordPress and generic HTML
     wp_content = None
@@ -104,18 +129,24 @@ def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None):
     doc_id = sha256_of_url(canonical_url)
     text = clean_text(html)
     entity_type = detect_entity_type(canonical_url, html)
+    # --- New: Enrichment ---
+    enrichment = extract_entities_and_relationships({"text": text}, schema or {})
     doc = {
         "doc_id": doc_id,
         "canonical_url": canonical_url,
         "entity_type": entity_type,
         "text": text,
         "raw": raw,
+        # New enrichment fields
+        "entities": enrichment.get("entities", []),
+        "relationships": enrichment.get("relationships", []),
+        "metadata": enrichment.get("metadata", {}),
     }
     validation_error = validate_schema(doc)
     if validation_error:
         quarantine_failure(doc, validation_error, quarantine_bucket)
     else:
-        persist_to_postgres(doc, conn)
+        persist_to_postgres(doc, conn, test_mode=test_mode)
         logging.info(f"Document {doc_id} processed and stored.")
 
 def stream_s3_raw_pages(bucket: str, prefix: str = "raw/"):
@@ -163,7 +194,11 @@ def ensure_kb_docs_table(conn):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--s3-keys', type=str, help='Comma-separated list of S3 keys to process (or @file for file list)')
+    parser.add_argument('--test-mode', action='store_true', help='Use test Postgres table')
     args = parser.parse_args()
+    global TEST_MODE
+    if args.test_mode:
+        TEST_MODE = True
     bucket = os.getenv('S3_BUCKET_NAME', 'raw-site-data')
     quarantine_bucket = os.getenv('QUARANTINE_BUCKET_NAME')
     db_url = os.getenv('POSTGRES_DSN')
@@ -172,6 +207,13 @@ def main():
     count = 0
     manifest = []
     s3_keys = []
+    # --- New: Infer schema from sample docs (could be periodic or cached) ---
+    # For demo, use a fixed sample; in production, sample from S3 or DB
+    sample_docs = [
+        {"text": "Coach John Smith teaches the Basketball Program starting June 1st."},
+        {"text": "The Summer Camp is organized by DME Academy."}
+    ]
+    schema = infer_schema_from_samples(sample_docs)
     if args.s3_keys:
         if args.s3_keys.startswith('@'):
             with open(args.s3_keys[1:], 'r') as f:
@@ -182,7 +224,7 @@ def main():
     else:
         raw_iter = stream_s3_raw_pages(bucket)
     for raw in raw_iter:
-        process_raw_page(raw, conn, quarantine_bucket)
+        process_raw_page(raw, conn, quarantine_bucket, schema, test_mode=TEST_MODE)
         manifest.append({
             's3_key': raw.get('s3_key', 'unknown'),
             'canonical_url': raw.get('url'),

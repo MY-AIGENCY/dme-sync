@@ -183,3 +183,36 @@ The search API is designed to work with Vapi.ai. Configure your Vapi.ai function
 - See `BACKLOG.md` for future tasks
 - See `CONTRIBUTING.md` for contribution guidelines
 
+## Test Mode (Safe End-to-End Validation)
+
+To run the pipeline on real S3 data but write all results to isolated test tables and indexes:
+
+- Set `TEST_MODE=1` in your environment, or pass `--test-mode` to the main scripts.
+- Normalization writes to `kb_docs_test` (Postgres), chunking/upsert writes to `dme-kb-test` (Pinecone).
+- All tables and indexes are auto-created if missing.
+- Inspect results with:
+  - `SELECT * FROM kb_docs_test LIMIT 5;` in Postgres
+  - Query `dme-kb-test` in Pinecone for chunk metadata (see code sample below)
+
+## AI-Driven Enrichment
+
+- The pipeline uses an LLM to infer a schema (entities, relationships, attributes) from sample data.
+- Each document is dynamically enriched with extracted entities, relationships, and metadata.
+- Enrichment fields are propagated through chunking, embedding, and graph construction.
+
+## Inspecting Enriched Results
+
+- **Postgres:**
+  - `SELECT doc_id, canonical_url, entities, relationships, metadata FROM kb_docs_test LIMIT 5;`
+- **Pinecone:**
+  - Use the following Python snippet:
+    ```python
+    from pinecone import Pinecone
+    import os
+    pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+    index = pc.Index("dme-kb-test")
+    results = index.query(vector=[0.0]*1536, top_k=5, include_metadata=True)
+    for match in results.get("matches", []):
+        print(match["metadata"])
+    ```
+

@@ -93,6 +93,17 @@ def process_graph_batch(records: List[Dict[str, Any]], driver, batch_num: int):
             for doc in records:
                 label = doc["entity_type"].capitalize()
                 session.write_transaction(upsert_node, label, doc)
+                # --- New: Upsert entities and relationships from enrichment ---
+                for entity in doc.get("entities", []):
+                    session.write_transaction(upsert_node, "Entity", {"doc_id": entity, "name": entity})
+                for rel in doc.get("relationships", []):
+                    session.write_transaction(
+                        upsert_relationship,
+                        "Entity", rel.get("subject"),
+                        rel.get("predicate", "RELATED_TO"),
+                        "Entity", rel.get("object")
+                    )
+                # Existing logic for staff/program
                 raw = doc["raw"]
                 if label == "Staff" and "program_ids" in raw:
                     for pid in raw["program_ids"]:

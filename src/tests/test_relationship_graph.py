@@ -2,6 +2,7 @@ import pytest
 from unittest import mock
 from src.indexer import relationship_graph as rg
 from neo4j.exceptions import ServiceUnavailable
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def sample_records():
@@ -112,3 +113,33 @@ def test_process_graph_with_retries_skips_after_max_retries(monkeypatch, sample_
     monkeypatch.setattr(rg, "process_graph_batch", always_fail)
     # Should not raise, should skip after max retries
     rg.process_graph_with_retries(sample_records, driver)
+
+def test_process_graph_batch_enrichment(monkeypatch):
+    # Mock Neo4j driver/session/tx
+    class DummySession:
+        def write_transaction(self, func, *args, **kwargs):
+            func_calls.append((func.__name__, args, kwargs))
+    class DummyDriver:
+        def session(self):
+            return DummySession()
+    func_calls = []
+    # Patch upsert_node and upsert_relationship
+    import indexer.relationship_graph as rg
+    monkeypatch.setattr(rg, "upsert_node", MagicMock())
+    monkeypatch.setattr(rg, "upsert_relationship", MagicMock())
+    # Doc with enrichment fields
+    doc = {
+        "doc_id": "abc123",
+        "entity_type": "program",
+        "text": "Coach John Smith teaches the Basketball Program starting June 1st.",
+        "entities": ["John Smith", "Basketball Program"],
+        "relationships": [
+            {"subject": "John Smith", "predicate": "teaches", "object": "Basketball Program"}
+        ],
+        "raw": {}
+    }
+    rg.process_graph_batch([doc], DummyDriver(), 1)
+    # Check that upsert_node and upsert_relationship were called for enrichment
+    rg.upsert_node.assert_any_call(ANY, "Entity", {"doc_id": "John Smith", "name": "John Smith"})
+    rg.upsert_node.assert_any_call(ANY, "Entity", {"doc_id": "Basketball Program", "name": "Basketball Program"})
+    rg.upsert_relationship.assert_any_call(ANY, "Entity", "John Smith", "teaches", "Entity", "Basketball Program")

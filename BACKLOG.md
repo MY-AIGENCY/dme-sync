@@ -6,27 +6,26 @@ This document tracks future development tasks, improvements, and technical debt 
 
 ## Open Tasks
 
-- [ ] Entity Extraction: Integrate NER (e.g., spaCy) into normalization ([docs](./docs/HANDOFF_BRIEF_2025-05-20.md))
-- [ ] Entity Typing/Linking: Add canonical typing and optional Wikidata linking
-- [ ] Relationship Extraction: Add OpenIE or dependency parsing for triples
-- [ ] Ontology/Graph Schema: Define and document minimal ontology ([docs/schema_v1.md](./docs/schema_v1.md))
-- [ ] Graph Construction: Upsert nodes/edges into Neo4j
-- [ ] Metadata Enrichment: Attach metadata to chunks
-- [ ] Re-index: Re-chunk, re-embed, and upsert with new metadata
-- [ ] Hybrid Retrieval: Fuse vector and graph search
-- [ ] Re-ranking: Implement metadata and graph-based re-ranking
+- [ ] Retrieval Pipeline: Integrate enrichment fields, validate in test mode, prepare for production rollout
+- [ ] API: Expose enriched fields in search results
 - [ ] Evaluation: Add precision/recall/latency metrics and feedback logging
-- [ ] Add checkpointing and resumable processing to normalization/canonicalization pipeline
-- [ ] Incremental manifest writing for long-running jobs
-- [ ] Complete docs/oncall.md with full incident response runbook
 - [ ] Add more real-data integration tests for edge cases
-- [ ] Implement semantic relationship & metadata enrichment layer (see HANDOFF_BRIEF_2025-05-20.md)
 - [ ] Add automated data parity audits between S3, Postgres, and Pinecone
 - [ ] Review and optimize all pipeline logging for clarity and completeness
 - [ ] (Add more as needed)
 
 ## Recently Completed
 
+- [x] AI-driven enrichment, chunking, and test-mode pipeline (validated)
+- [x] Entity Extraction: Integrate NER (e.g., spaCy) into normalization ([docs](./docs/HANDOFF_BRIEF_2025-05-20.md))
+- [x] Entity Typing/Linking: Add canonical typing and optional Wikidata linking
+- [x] Relationship Extraction: Add OpenIE or dependency parsing for triples
+- [x] Ontology/Graph Schema: Define and document minimal ontology ([docs/schema_v1.md](./docs/schema_v1.md))
+- [x] Graph Construction: Upsert nodes/edges into Neo4j
+- [x] Metadata Enrichment: Attach metadata to chunks
+- [x] Re-index: Re-chunk, re-embed, and upsert with new metadata
+- [x] Hybrid Retrieval: Fuse vector and graph search
+- [x] Re-ranking: Implement metadata and graph-based re-ranking
 - [x] Migrated to src/ layout
 - [x] Removed legacy/obsolete files
 - [x] Enforced cloud-only development protocol

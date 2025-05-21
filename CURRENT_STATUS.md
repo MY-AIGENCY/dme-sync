@@ -1,18 +1,17 @@
 # Project Status
 
-_Last updated: <!-- AUTO-UPDATE -->_
+_Last updated: 2025-05-20_
 
 ## What Was Completed
 - Section 2: Normalize & Canonicalize (verified; code and rules pushed)
-- Full pipeline operational except for query summarization quality
+- Section 4: Chunk, Embed, Index (AI-driven enrichment, chunking, and test-mode pipeline complete and validated)
 
 ## In Progress
-- Section 4: Chunk, Embed, Index (semantic enrichment and relationship modeling)
-- Sub-tasks: Entity Extraction, Typing/Linking, Relationship Extraction, Ontology/Graph Schema, Graph Construction, Metadata Enrichment, Re-indexing, Hybrid Retrieval, Re-ranking, Evaluation
+- Section 5: Retrieval Pipeline (integration of enrichment fields, test-mode validation)
 
 ## What's Next
-- Complete semantic enrichment and relationship modeling (see BACKLOG.md)
-- Focus on improving summarization relevance and accuracy
+- Integrate enrichment fields into retrieval pipeline and API
+- Prepare for production rollout after final validation
 
 ## Blockers or Open Questions
 - None

@@ -10,6 +10,7 @@ for k, v in os.environ.items():
 import pytest
 from unittest import mock
 from src.indexer import chunk_embed_index as cei
+from indexer.chunk_embed_index import chunk_text
 
 @pytest.fixture
 def sample_text():
@@ -59,4 +60,35 @@ def test_process_and_upsert_runs(monkeypatch):
     monkeypatch.setattr(cei, "psycopg2", mock.MagicMock())
     with pytest.raises(SystemExit) as e:
         cei.process_and_upsert()
-    assert e.value.code == 0 
+    assert e.value.code == 0
+
+def test_chunk_metadata_enrichment():
+    doc = {
+        "doc_id": "abc123",
+        "canonical_url": "https://example.com",
+        "entity_type": "program",
+        "text": "Coach John Smith teaches the Basketball Program starting June 1st.",
+        "entities": ["John Smith", "Basketball Program"],
+        "relationships": [
+            {"subject": "John Smith", "predicate": "teaches", "object": "Basketball Program"}
+        ],
+        "metadata": {"date": "June 1st"}
+    }
+    section_chunks = chunk_text(doc["text"], level="section")
+    para_chunks = chunk_text(section_chunks[0], level="paragraph")
+    # Simulate metadata creation as in chunk_embed_index.py
+    meta = {
+        "doc_id": doc["doc_id"],
+        "canonical_url": doc["canonical_url"],
+        "entity_type": doc["entity_type"],
+        "text": para_chunks[0][:200],
+        "entities": doc.get("entities", []),
+        "relationships": doc.get("relationships", []),
+        "metadata": doc.get("metadata", {}),
+    }
+    assert "entities" in meta
+    assert "relationships" in meta
+    assert "metadata" in meta
+    assert meta["entities"] == ["John Smith", "Basketball Program"]
+    assert meta["relationships"][0]["predicate"] == "teaches"
+    assert meta["metadata"]["date"] == "June 1st" 

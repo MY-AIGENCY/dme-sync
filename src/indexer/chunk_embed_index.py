@@ -45,6 +45,10 @@ BATCH_SIZE = 200
 THROTTLE_SEC = 1.0
 PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "dme-kb")  # Best practice: explicit namespace
 
+# Support test mode for isolated test index
+TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
+TEST_PINECONE_INDEX_NAME = os.getenv("TEST_PINECONE_INDEX_NAME", "dme-kb-test")
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 # Initialize OpenAI
@@ -96,11 +100,12 @@ def get_embedding(text: str, model=EMBEDDING_MODEL) -> List[float]:
         logging.error(f"Error getting embedding: {e}")
         return [0.0] * EMBEDDING_DIMENSION
 
-def ensure_pinecone_index():
+def ensure_pinecone_index(test_mode=False):
+    index_name = TEST_PINECONE_INDEX_NAME if test_mode else PINECONE_INDEX_NAME
     index_list = pc.list_indexes()
-    if PINECONE_INDEX_NAME not in index_list.names():
+    if index_name not in index_list.names():
         pc.create_index(
-            name=PINECONE_INDEX_NAME,
+            name=index_name,
             dimension=EMBEDDING_DIMENSION,
             metric="cosine",
             spec=pinecone.ServerlessSpec(
@@ -108,8 +113,8 @@ def ensure_pinecone_index():
                 region='us-east-1'
             )
         )
-        logging.info(f"Created Pinecone index: {PINECONE_INDEX_NAME}")
-    return pc.Index(PINECONE_INDEX_NAME)
+        logging.info(f"Created Pinecone index: {index_name}")
+    return pc.Index(index_name)
 
 def get_normalized_records(conn) -> List[Dict[str, Any]]:
     with conn.cursor() as cur:
@@ -170,7 +175,7 @@ def process_and_upsert(args=None):
     logging.info("First 5 canonical URLs:")
     for r in records[:5]:
         logging.info(f"  {r['canonical_url']}")
-    pinecone_index = ensure_pinecone_index()
+    pinecone_index = ensure_pinecone_index(test_mode=TEST_MODE)
     batch = []
     total_upserted = 0
     get_pinecone_index_stats()  # Log stats before upserts
@@ -201,7 +206,11 @@ def process_and_upsert(args=None):
                     "doc_id": doc["doc_id"],
                     "canonical_url": doc["canonical_url"],
                     "entity_type": doc["entity_type"],
-                    "text": para[:200]  # Add snippet for preview
+                    "text": para[:200],  # Add snippet for preview
+                    # New enrichment fields
+                    "entities": doc.get("entities", []),
+                    "relationships": doc.get("relationships", []),
+                    "metadata": doc.get("metadata", {}),
                 }
                 batch.append({
                     "id": chunk_id,
@@ -257,7 +266,11 @@ def process_and_upsert(args=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--canonical-urls', type=str, help='Comma-separated list of canonical URLs to process (or @file for file list)')
+    parser.add_argument('--test-mode', action='store_true', help='Use test Pinecone index and test DB schema')
     args = parser.parse_args()
+    global TEST_MODE
+    if args.test_mode:
+        TEST_MODE = True
     process_and_upsert(args)
 
 def test_pinecone_hybrid_index():
