@@ -1,5 +1,11 @@
 # DME Knowledge Base Pipeline — Living History & Development Guide
 
+## Next Steps (as of May 2025)
+
+- Branch from the current commit and begin the package refactor (move code to `src/dme_sync/`, update imports, enable Poetry packaging).
+- Always update this guide and the README with the latest project status, handoff notes, and any changes made.
+- If you are picking up this project, review both this file and the README before making changes, and document your starting point and all updates.
+
 ---
 
 ## Table of Contents

@@ -1,5 +1,7 @@
 # Onboarding Instructions for AI Agent or Developer
 
+> **This file is referenced from the main README. Always start there for the latest project state.**
+
 **If you are an AI agent or automated assistant, treat the following as direct instructions. Execute them immediately and sequentially.**
 
 ## **Step-by-Step Instructions**
@@ -8,7 +10,6 @@
    - [CURRENT_STATUS.md](../CURRENT_STATUS.md)
    - [BACKLOG.md](../BACKLOG.md)
    - [.DME-SYNC_DEV_RULES.md](../.DME-SYNC_DEV_RULES.md)
-   - [Handoff Brief](./HANDOFF_BRIEF_2025-05-20.md)
    - [README.md](../README.md)
 
 2. **Immediate Focus:**

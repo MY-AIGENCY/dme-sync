@@ -1,7 +1,0 @@
-doc_id,canonical_url,entities,relationships,metadata
-91d98baadb7f66a48465a847acfd4dd3b32b962529dc57e80483f9f45a6bfa71,https://dmeacademy.com/dme-alumni-highlight-canisius-college-all-rookie-team-jacco-fritz-thriving/,["John Smith", "Basketball Program"],[{"object": "Basketball Program", "subject": "John Smith", "predicate": "teaches"}],{"date": "June 1st"}
-9990a22e7c387bcd0332cb2faf406c1c7cf036ab98f859f0f11bbea2776fc696,https://dmeacademy.com/all-events/,["Daytona Beach", "Florida", "DME Academy"],[{"object": "Daytona Beach", "subject": "DME Academy", "predicate": "located in"}, {"object": "Florida", "subject": "Daytona Beach", "predicate": "located in"}],{"date": "today"}
-4811a87bb99dea00028778133189e118e2aa63b560d217ecdbf33e31886c0594,https://dmeacademy.com/mikel-brown-jr-shines-at-siaa-crossover-for-dme-academy/,["John Smith", "Basketball Program"],[{"object": "Basketball Program", "subject": "John Smith", "predicate": "teaches"}],{"date": "June 1st"}
-bc8feb05f5a11b8ab20882d22c2b621fcc9090a22d3d3cf9c9b26f802ae2768a,https://dmeacademy.com/october-students-of-month/,["John Smith", "Basketball Program"],[{"object": "Basketball Program", "subject": "John Smith", "predicate": "teaches"}],{"date": "June 1st"}
-87df6eb1ab7506e83c462fd88b69d39ded3579c964266ba7f996dda5c49585b4,https://dmeacademy.com/dme-boys-soccer-sima-friendlies/,["John Smith", "Basketball Program"],[{"object": "Basketball Program", "subject": "John Smith", "predicate": "teaches"}],{"date": "June 1st"}
-(5 rows)
