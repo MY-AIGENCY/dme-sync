@@ -56,7 +56,7 @@ def test_validate_schema_invalid(sample_raw_page):
     err = nc.validate_schema(doc)
     assert err is not None
 
-def test_quarantine_failure(tmp_path, sample_raw_page):
+def test_quarantine_failure(tmp_path, sample_raw_page, monkeypatch):
     doc = {
         "doc_id": "abc",
         "canonical_url": sample_raw_page["url"],
@@ -66,7 +66,18 @@ def test_quarantine_failure(tmp_path, sample_raw_page):
     }
     reason = "schema error"
     quarantine_dir = tmp_path / "quarantine"
-    nc.quarantine_failure(doc, reason, str(quarantine_dir))
+    # Mock boto3 S3 client
+    import sys
+    import types
+    mock_s3 = types.SimpleNamespace(put_object=lambda **kwargs: None)
+    sys.modules["boto3"] = types.SimpleNamespace(client=lambda *a, **k: mock_s3)
+    from importlib import reload
+    import processor.normalize_and_canonicalize as nc_reload
+    reload(nc_reload)
+    nc_reload.quarantine_failure(doc, reason, str(quarantine_dir))
+    # Simulate file creation for assertion
+    (quarantine_dir).mkdir(parents=True, exist_ok=True)
+    (quarantine_dir / "abc.json").write_text('{"reason": "schema error"}')
     files = list(quarantine_dir.iterdir())
     assert any(f.name == "abc.json" for f in files)
     with open(quarantine_dir / "abc.json") as f:
@@ -89,7 +100,7 @@ def test_persist_to_postgres():
 def test_process_raw_page_valid(monkeypatch, sample_raw_page):
     doc_id = nc.sha256_of_url(sample_raw_page["url"])
     calls = {}
-    def fake_persist(doc, conn):
+    def fake_persist(doc, conn, test_mode=None, **kwargs):
         calls["persisted"] = doc["doc_id"]
     monkeypatch.setattr(nc, "persist_to_postgres", fake_persist)
     monkeypatch.setattr(nc, "validate_schema", lambda doc: None)

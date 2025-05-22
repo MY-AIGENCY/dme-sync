@@ -23,8 +23,9 @@ dependencies = [
     "sentence-transformers (>=4.1.0,<5.0.0)",
     "weaviate-client (>=4.14.4,<5.0.0)",
     "spacy (>=3.8.6,<4.0.0)",
-    "psycopg2-binary (>=2.9.10,<3.0.0)",
+    "psycopg2-binary (>=2.9.9,<3.0.0)",
     "pinecone (>=7.0.0,<8.0.0)",
+    "neo4j (>=5.28.1,<6.0.0)",
 ]
 
 
@@ -33,7 +34,6 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-pinecone = { version = "^6.0.2", python = ">=3.9,<4.0" }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.10"

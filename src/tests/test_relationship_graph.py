@@ -2,7 +2,7 @@ import pytest
 from unittest import mock
 from indexer import relationship_graph as rg
 from neo4j.exceptions import ServiceUnavailable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, ANY
 
 @pytest.fixture
 def sample_records():
@@ -119,14 +119,23 @@ def test_process_graph_batch_enrichment(monkeypatch):
     class DummySession:
         def write_transaction(self, func, *args, **kwargs):
             func_calls.append((func.__name__, args, kwargs))
+            return func(*args, **kwargs)
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
     class DummyDriver:
         def session(self):
             return DummySession()
     func_calls = []
     # Patch upsert_node and upsert_relationship
     import indexer.relationship_graph as rg
-    monkeypatch.setattr(rg, "upsert_node", MagicMock())
-    monkeypatch.setattr(rg, "upsert_relationship", MagicMock())
+    def named_mock(name):
+        m = MagicMock()
+        m.__name__ = name
+        return m
+    monkeypatch.setattr(rg, "upsert_node", named_mock("upsert_node"))
+    monkeypatch.setattr(rg, "upsert_relationship", named_mock("upsert_relationship"))
     # Doc with enrichment fields
     doc = {
         "doc_id": "abc123",
@@ -140,6 +149,13 @@ def test_process_graph_batch_enrichment(monkeypatch):
     }
     rg.process_graph_batch([doc], DummyDriver(), 1)
     # Check that upsert_node and upsert_relationship were called for enrichment
-    rg.upsert_node.assert_any_call(ANY, "Entity", {"doc_id": "John Smith", "name": "John Smith"})
-    rg.upsert_node.assert_any_call(ANY, "Entity", {"doc_id": "Basketball Program", "name": "Basketball Program"})
-    rg.upsert_relationship.assert_any_call(ANY, "Entity", "John Smith", "teaches", "Entity", "Basketball Program")
+    upsert_node_calls = [call.args for call in rg.upsert_node.call_args_list]
+    assert any(
+        args[0] == 'Entity' and args[1] == {'doc_id': 'John Smith', 'name': 'John Smith'}
+        for args in upsert_node_calls
+    ), "upsert_node was not called with expected enrichment entity arguments."
+    upsert_relationship_calls = [call.args for call in rg.upsert_relationship.call_args_list]
+    assert any(
+        args[0] == 'Entity' and args[1] == 'John Smith' and args[2] == 'teaches' and args[3] == 'Entity' and args[4] == 'Basketball Program'
+        for args in upsert_relationship_calls
+    ), "upsert_relationship was not called with expected enrichment relationship arguments."

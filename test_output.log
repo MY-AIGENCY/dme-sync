@@ -1,192 +1,132 @@
 ============================= test session starts ==============================
-platform darwin -- Python 3.12.9, pytest-8.3.5, pluggy-1.6.0 -- /Users/dontraub/Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/bin/python
+platform darwin -- Python 3.12.9, pytest-8.3.5, pluggy-1.6.0 -- /Users/dontraub/Library/Caches/pypoetry/virtualenvs/dme-sync-SB1h0D0P-py3.12/bin/python
 cachedir: .pytest_cache
 rootdir: /Users/dontraub/Code_Projects/dme-sync-new
 configfile: pyproject.toml
 plugins: anyio-4.9.0
-collecting ... collected 28 items
+collecting ... collected 29 items
 
 src/tests/test_chunk_embed_index.py::test_chunk_text_section PASSED      [  3%]
-src/tests/test_chunk_embed_index.py::test_chunk_text_paragraph_overlap PASSED [  7%]
+src/tests/test_chunk_embed_index.py::test_chunk_text_paragraph_overlap PASSED [  6%]
 src/tests/test_chunk_embed_index.py::test_get_embedding_returns_vector PASSED [ 10%]
-src/tests/test_chunk_embed_index.py::test_get_embedding_handles_error PASSED [ 14%]
-src/tests/test_chunk_embed_index.py::test_process_and_upsert_runs FAILED [ 17%]
-src/tests/test_chunk_embed_index.py::test_chunk_metadata_enrichment PASSED [ 21%]
-src/tests/test_dynamic_enrichment.py::test_extract_entities_and_relationships PASSED [ 25%]
-src/tests/test_normalize_and_canonicalize.py::test_sha256_of_url PASSED  [ 28%]
-src/tests/test_normalize_and_canonicalize.py::test_clean_text PASSED     [ 32%]
-src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_url PASSED [ 35%]
-src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_html PASSED [ 39%]
-src/tests/test_normalize_and_canonicalize.py::test_validate_schema_valid PASSED [ 42%]
-src/tests/test_normalize_and_canonicalize.py::test_validate_schema_invalid PASSED [ 46%]
-src/tests/test_normalize_and_canonicalize.py::test_quarantine_failure FAILED [ 50%]
-src/tests/test_normalize_and_canonicalize.py::test_persist_to_postgres PASSED [ 53%]
-src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_valid FAILED [ 57%]
+src/tests/test_chunk_embed_index.py::test_get_embedding_handles_error PASSED [ 13%]
+src/tests/test_chunk_embed_index.py::test_process_and_upsert_runs PASSED [ 17%]
+src/tests/test_chunk_embed_index.py::test_chunk_metadata_enrichment PASSED [ 20%]
+src/tests/test_dynamic_enrichment.py::test_extract_entities_and_relationships PASSED [ 24%]
+src/tests/test_normalize_and_canonicalize.py::test_sha256_of_url PASSED  [ 27%]
+src/tests/test_normalize_and_canonicalize.py::test_clean_text PASSED     [ 31%]
+src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_url PASSED [ 34%]
+src/tests/test_normalize_and_canonicalize.py::test_detect_entity_type_html PASSED [ 37%]
+src/tests/test_normalize_and_canonicalize.py::test_validate_schema_valid PASSED [ 41%]
+src/tests/test_normalize_and_canonicalize.py::test_validate_schema_invalid PASSED [ 44%]
+src/tests/test_normalize_and_canonicalize.py::test_quarantine_failure PASSED [ 48%]
+src/tests/test_normalize_and_canonicalize.py::test_persist_to_postgres PASSED [ 51%]
+src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_valid PASSED [ 55%]
+src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_invalid PASSED [ 58%]
+src/tests/test_pinecone_needle.py::test_needle_queries FAILED            [ 62%]
+src/tests/test_psycopg2_import.py::test_psycopg2_import PASSED           [ 65%]
+src/tests/test_relationship_graph.py::test_upsert_node PASSED            [ 68%]
+src/tests/test_relationship_graph.py::test_upsert_relationship PASSED    [ 72%]
+src/tests/test_relationship_graph.py::test_process_graph_batch_creates_nodes_and_edges PASSED [ 75%]
+src/tests/test_relationship_graph.py::test_process_graph_batch_handles_missing_program_ids PASSED [ 79%]
+src/tests/test_relationship_graph.py::test_get_normalized_records PASSED [ 82%]
+src/tests/test_relationship_graph.py::test_materialize_adjacency_to_postgres PASSED [ 86%]
+src/tests/test_relationship_graph.py::test_process_graph_with_retries_handles_transient_errors PASSED [ 89%]
+src/tests/test_relationship_graph.py::test_process_graph_with_retries_skips_after_max_retries PASSED [ 93%]
+src/tests/test_relationship_graph.py::test_process_graph_batch_enrichment FAILED [ 96%]
+src/tests/test_schema_inference.py::test_infer_schema_from_samples PASSED [100%]
 
 =================================== FAILURES ===================================
-_________________________ test_process_and_upsert_runs _________________________
+_____________________________ test_needle_queries ______________________________
 
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x17e383350>
+    def test_needle_queries():
+        for v in TEST_VECTORS:
+            start = time.time()
+            query_vec = v["values"]
+            result = index.query(vector=query_vec, top_k=1, include_metadata=True)
+            elapsed = time.time() - start
+>           assert result["matches"], f"No match for {v['id']}"
+E           AssertionError: No match for needle-1
+E           assert []
 
-    def test_process_and_upsert_runs(monkeypatch):
-        # Mock DB, Pinecone, and OpenAI
-        monkeypatch.setattr(cei, "get_normalized_records", lambda conn: [{
-            "doc_id": "abc",
-            "canonical_url": "url",
-            "entity_type": "type",
-            "text": "word " * 600,
-            "raw": {}
-        }])
-        monkeypatch.setattr(cei, "get_embedding", lambda text, model=None: [0.1] * cei.EMBEDDING_DIMENSION)
-        fake_index = mock.MagicMock()
-        monkeypatch.setattr(cei, "ensure_pinecone_index", lambda: fake_index)
-        monkeypatch.setattr(cei, "psycopg2", mock.MagicMock())
-        with pytest.raises(SystemExit) as e:
->           cei.process_and_upsert()
+src/tests/test_pinecone_needle.py:39: AssertionError
+_____________________ test_process_graph_batch_enrichment ______________________
 
-src/tests/test_chunk_embed_index.py:62: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x147afd5b0>
 
-args = None
-
-    def process_and_upsert(args=None):
-        logging.info("=== ENVIRONMENT VARIABLES ===")
-        logging.info(f"S3_BUCKET_NAME={os.getenv('S3_BUCKET_NAME')}")
-        logging.info(f"POSTGRES_DSN={os.getenv('POSTGRES_DSN')}")
-        logging.info(f"DRY_RUN_LIMIT={DRY_RUN_LIMIT}")
-        logging.info(f"PINECONE_NAMESPACE={PINECONE_NAMESPACE}")
-        pg_conn = psycopg2.connect(POSTGRES_DSN)
-        records = get_normalized_records(pg_conn)
-        targeted = False
-        if args and args.canonical_urls:
-            targeted = True
-            if args.canonical_urls.startswith('@'):
-                with open(args.canonical_urls[1:], 'r') as f:
-                    url_set = set(line.strip() for line in f if line.strip())
-            else:
-                url_set = set(u.strip() for u in args.canonical_urls.split(','))
-            records = [r for r in records if r['canonical_url'] in url_set]
-        logging.info(f"Loaded {len(records)} records from Postgres.")
-        logging.info("First 5 canonical URLs:")
-        for r in records[:5]:
-            logging.info(f"  {r['canonical_url']}")
->       pinecone_index = ensure_pinecone_index(test_mode=TEST_MODE)
-E       TypeError: test_process_and_upsert_runs.<locals>.<lambda>() got an unexpected keyword argument 'test_mode'
-
-src/indexer/chunk_embed_index.py:178: TypeError
-___________________________ test_quarantine_failure ____________________________
-
-tmp_path = PosixPath('/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0')
-sample_raw_page = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
-
-    def test_quarantine_failure(tmp_path, sample_raw_page):
+    def test_process_graph_batch_enrichment(monkeypatch):
+        # Mock Neo4j driver/session/tx
+        class DummySession:
+            def write_transaction(self, func, *args, **kwargs):
+                func_calls.append((func.__name__, args, kwargs))
+                return func(*args, **kwargs)
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+        class DummyDriver:
+            def session(self):
+                return DummySession()
+        func_calls = []
+        # Patch upsert_node and upsert_relationship
+        import indexer.relationship_graph as rg
+        def named_mock(name):
+            m = MagicMock()
+            m.__name__ = name
+            return m
+        monkeypatch.setattr(rg, "upsert_node", named_mock("upsert_node"))
+        monkeypatch.setattr(rg, "upsert_relationship", named_mock("upsert_relationship"))
+        # Doc with enrichment fields
         doc = {
-            "doc_id": "abc",
-            "canonical_url": sample_raw_page["url"],
+            "doc_id": "abc123",
             "entity_type": "program",
-            "text": "Program info",
-            "raw": sample_raw_page,
+            "text": "Coach John Smith teaches the Basketball Program starting June 1st.",
+            "entities": ["John Smith", "Basketball Program"],
+            "relationships": [
+                {"subject": "John Smith", "predicate": "teaches", "object": "Basketball Program"}
+            ],
+            "raw": {}
         }
-        reason = "schema error"
-        quarantine_dir = tmp_path / "quarantine"
->       nc.quarantine_failure(doc, reason, str(quarantine_dir))
+        rg.process_graph_batch([doc], DummyDriver(), 1)
+        # Check that upsert_node and upsert_relationship were called for enrichment
+        print("[DEBUG] upsert_node calls:", rg.upsert_node.call_args_list)
+        print("[DEBUG] upsert_relationship calls:", rg.upsert_relationship.call_args_list)
+>       rg.upsert_node.assert_any_call(ANY, "Entity", {"doc_id": "John Smith", "name": "John Smith"})
 
-src/tests/test_normalize_and_canonicalize.py:69: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-src/processor/normalize_and_canonicalize.py:118: in quarantine_failure
-    s3.put_object(Bucket=quarantine_bucket, Key=key, Body=json.dumps({"doc": doc, "reason": reason}, indent=2).encode('utf-8'))
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:595: in _api_call
-    return self._make_api_call(operation_name, kwargs)
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/context.py:123: in wrapper
-    return func(*args, **kwargs)
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:999: in _make_api_call
-    api_params = self._emit_api_params(
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/client.py:1118: in _emit_api_params
-    self.meta.events.emit(
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:412: in emit
-    return self._emitter.emit(aliased_event_name, **kwargs)
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:256: in emit
-    return self._emit(event_name, kwargs)
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/hooks.py:239: in _emit
-    response = handler(**kwargs)
+src/tests/test_relationship_graph.py:154: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-params = {'Body': <_io.BytesIO object at 0x17f102b60>, 'Bucket': '/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine', 'Key': 'quarantine/abc.json'}
-kwargs = {'context': {'auth_type': None, 'client_config': <botocore.config.Config object at 0x17ce61190>, 'client_region': 'us-...aming_input': True, ...}, 'event_name': 'before-parameter-build.s3.PutObject', 'model': OperationModel(name=PutObject)}
-bucket = '/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine'
-error_msg = 'Invalid bucket name "/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quaran...rn:(aws).*:s3-outposts:[a-z\\-0-9]+:[0-9]{12}:outpost[/:][a-zA-Z0-9\\-]{1,63}[/:]accesspoint[/:][a-zA-Z0-9\\-]{1,63}$"'
+self = <MagicMock id='5655050864'>
+args = (<ANY>, 'Entity', {'doc_id': 'John Smith', 'name': 'John Smith'})
+kwargs = {}
+expected = call(<ANY>, 'Entity', {'doc_id': 'John Smith', 'name': 'John Smith'})
+cause = None
+actual = [call('Program', {'doc_id': 'abc123', 'entity_type': 'program', 'text': 'Coach John Smith teaches the Basketball Progr...: 'John Smith', 'name': 'John Smith'}), call('Entity', {'doc_id': 'Basketball Program', 'name': 'Basketball Program'})]
+expected_string = "mock(<ANY>, 'Entity', {'doc_id': 'John Smith', 'name': 'John Smith'})"
 
-    def validate_bucket_name(params, **kwargs):
-        if 'Bucket' not in params:
-            return
-        bucket = params['Bucket']
-        if not VALID_BUCKET.search(bucket) and not VALID_S3_ARN.search(bucket):
-            error_msg = (
-                f'Invalid bucket name "{bucket}": Bucket name must match '
-                f'the regex "{VALID_BUCKET.pattern}" or be an ARN matching '
-                f'the regex "{VALID_S3_ARN.pattern}"'
-            )
->           raise ParamValidationError(report=error_msg)
-E           botocore.exceptions.ParamValidationError: Parameter validation failed:
-E           Invalid bucket name "/private/var/folders/hd/b_9whh_s3bb7mb07488qxqsc0000gn/T/pytest-of-dontraub/pytest-0/test_quarantine_failure0/quarantine": Bucket name must match the regex "^[a-zA-Z0-9.\-_]{1,255}$" or be an ARN matching the regex "^arn:(aws).*:(s3|s3-object-lambda):[a-z\-0-9]*:[0-9]{12}:accesspoint[/:][a-zA-Z0-9\-.]{1,63}$|^arn:(aws).*:s3-outposts:[a-z\-0-9]+:[0-9]{12}:outpost[/:][a-zA-Z0-9\-]{1,63}[/:]accesspoint[/:][a-zA-Z0-9\-]{1,63}$"
+    def assert_any_call(self, /, *args, **kwargs):
+        """assert the mock has been called with the specified arguments.
+    
+        The assert passes if the mock has *ever* been called, unlike
+        `assert_called_with` and `assert_called_once_with` that only pass if
+        the call is the most recent one."""
+        expected = self._call_matcher(_Call((args, kwargs), two=True))
+        cause = expected if isinstance(expected, Exception) else None
+        actual = [self._call_matcher(c) for c in self.call_args_list]
+        if cause or expected not in _AnyComparer(actual):
+            expected_string = self._format_mock_call_signature(args, kwargs)
+>           raise AssertionError(
+                '%s call not found' % expected_string
+            ) from cause
+E           AssertionError: mock(<ANY>, 'Entity', {'doc_id': 'John Smith', 'name': 'John Smith'}) call not found
 
-../../Library/Caches/pypoetry/virtualenvs/dme-sync-dj_jGVjm-py3.12/lib/python3.12/site-packages/botocore/handlers.py:299: ParamValidationError
-_________________________ test_process_raw_page_valid __________________________
-
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x17f1848f0>
-sample_raw_page = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
-
-    def test_process_raw_page_valid(monkeypatch, sample_raw_page):
-        doc_id = nc.sha256_of_url(sample_raw_page["url"])
-        calls = {}
-        def fake_persist(doc, conn):
-            calls["persisted"] = doc["doc_id"]
-        monkeypatch.setattr(nc, "persist_to_postgres", fake_persist)
-        monkeypatch.setattr(nc, "validate_schema", lambda doc: None)
->       nc.process_raw_page(sample_raw_page, mock.MagicMock())
-
-src/tests/test_normalize_and_canonicalize.py:96: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-raw = {'checksum': 'def456', 'etag': 'abc123', 'html': '<html><head><title>Basketball</title></head><body>Program info</body></html>', 'scraped_at': '2024-06-01T12:00:00Z', ...}
-conn = <MagicMock id='6427265312'>, quarantine_bucket = None, schema = None
-test_mode = False
-
-    def process_raw_page(raw: Dict[str, Any], conn, quarantine_bucket=None, schema=None, test_mode=False):
-        url = raw.get("url")
-        # Extract text content robustly for WordPress and generic HTML
-        wp_content = None
-        if isinstance(raw.get("raw"), dict):
-            wp_content = raw["raw"].get("content", {}).get("rendered")
-        html = wp_content if wp_content else raw.get("html", "")
-        canonical_url = url
-        doc_id = sha256_of_url(canonical_url)
-        text = clean_text(html)
-        entity_type = detect_entity_type(canonical_url, html)
-        # --- New: Enrichment ---
-        enrichment = extract_entities_and_relationships({"text": text}, schema or {})
-        doc = {
-            "doc_id": doc_id,
-            "canonical_url": canonical_url,
-            "entity_type": entity_type,
-            "text": text,
-            "raw": raw,
-            # New enrichment fields
-            "entities": enrichment.get("entities", []),
-            "relationships": enrichment.get("relationships", []),
-            "metadata": enrichment.get("metadata", {}),
-        }
-        validation_error = validate_schema(doc)
-        if validation_error:
-            quarantine_failure(doc, validation_error, quarantine_bucket)
-        else:
->           persist_to_postgres(doc, conn, test_mode=test_mode)
-E           TypeError: test_process_raw_page_valid.<locals>.fake_persist() got an unexpected keyword argument 'test_mode'
-
-src/processor/normalize_and_canonicalize.py:149: TypeError
+/opt/homebrew/Cellar/python@3.12/3.12.9/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:1020: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[DEBUG] upsert_node calls: [call('Program', {'doc_id': 'abc123', 'entity_type': 'program', 'text': 'Coach John Smith teaches the Basketball Program starting June 1st.', 'entities': ['John Smith', 'Basketball Program'], 'relationships': [{'subject': 'John Smith', 'predicate': 'teaches', 'object': 'Basketball Program'}], 'raw': {}}),
+ call('Entity', {'doc_id': 'John Smith', 'name': 'John Smith'}),
+ call('Entity', {'doc_id': 'Basketball Program', 'name': 'Basketball Program'})]
+[DEBUG] upsert_relationship calls: [call('Entity', 'John Smith', 'teaches', 'Entity', 'Basketball Program')]
 =========================== short test summary info ============================
-FAILED src/tests/test_chunk_embed_index.py::test_process_and_upsert_runs - Ty...
-FAILED src/tests/test_normalize_and_canonicalize.py::test_quarantine_failure
-FAILED src/tests/test_normalize_and_canonicalize.py::test_process_raw_page_valid
-!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 3 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-========================= 3 failed, 13 passed in 8.69s =========================
+FAILED src/tests/test_pinecone_needle.py::test_needle_queries - AssertionErro...
+FAILED src/tests/test_relationship_graph.py::test_process_graph_batch_enrichment
+================== 2 failed, 27 passed, 4 warnings in 29.47s ===================

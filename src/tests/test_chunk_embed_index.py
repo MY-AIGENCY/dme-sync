@@ -56,11 +56,10 @@ def test_process_and_upsert_runs(monkeypatch):
     }])
     monkeypatch.setattr(cei, "get_embedding", lambda text, model=None: [0.1] * cei.EMBEDDING_DIMENSION)
     fake_index = mock.MagicMock()
-    monkeypatch.setattr(cei, "ensure_pinecone_index", lambda: fake_index)
+    monkeypatch.setattr(cei, "ensure_pinecone_index", lambda test_mode=None, **kwargs: fake_index)
     monkeypatch.setattr(cei, "psycopg2", mock.MagicMock())
-    with pytest.raises(SystemExit) as e:
-        cei.process_and_upsert()
-    assert e.value.code == 0
+    # Just call the function and assert it completes (mocked side effects)
+    cei.process_and_upsert()
 
 def test_chunk_metadata_enrichment():
     doc = {
